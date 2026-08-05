@@ -51,16 +51,7 @@ data class Recipe(
         append(notes)
     }.lowercase()
 
-    fun timeLabel(): String? {
-        val m = totalMinutes ?: return null
-        if (m <= 0) return null
-        return when {
-            m < 60 -> "$m min"
-            m % 60 == 0 -> "${m / 60} uur"
-            else -> "${m / 60} u ${m % 60} m"
-        }
-    }
-
-    fun servingsLabelOrNull(): String? = servingsLabel
-        ?: servings?.let { if (it == 1) "1 portie" else "$it porties" }
+    // The wording for the time and the yield lives in ui/Labels.kt: a recipe is kept
+    // for years and read in whichever language is set today, so only the numbers
+    // belong here.
 }

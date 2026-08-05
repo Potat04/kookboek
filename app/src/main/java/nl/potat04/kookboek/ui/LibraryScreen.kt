@@ -25,12 +25,14 @@ import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -46,6 +48,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -65,6 +69,7 @@ fun LibraryScreen(
     onSort: (SortOrder) -> Unit,
     onOpen: (Recipe) -> Unit,
     onAdd: () -> Unit,
+    onSettings: () -> Unit,
     contentPadding: PaddingValues,
 ) {
     Box(Modifier.fillMaxWidth()) {
@@ -78,7 +83,7 @@ fun LibraryScreen(
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             item {
-                Masthead(count = total)
+                Masthead(count = total, onSettings = onSettings)
                 Spacer(Modifier.height(14.dp))
             }
 
@@ -111,13 +116,13 @@ fun LibraryScreen(
         ) {
             Icon(Icons.Default.Add, contentDescription = null)
             Spacer(Modifier.width(8.dp))
-            Text("Toevoegen", style = MaterialTheme.typography.labelLarge)
+            Text(stringResource(R.string.library_add), style = MaterialTheme.typography.labelLarge)
         }
     }
 }
 
 @Composable
-private fun Masthead(count: Int) {
+private fun Masthead(count: Int, onSettings: () -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Icon(
             painter = logoPainter(),
@@ -126,16 +131,20 @@ private fun Masthead(count: Int) {
             modifier = Modifier.size(34.dp),
         )
         Spacer(Modifier.width(12.dp))
-        Column {
-            Text("Kookboek", style = MaterialTheme.typography.displaySmall)
+        Column(Modifier.weight(1f)) {
+            Text(stringResource(R.string.app_name), style = MaterialTheme.typography.displaySmall)
             Text(
-                when (count) {
-                    0 -> "nog leeg"
-                    1 -> "1 recept"
-                    else -> "$count recepten"
-                },
+                if (count == 0) stringResource(R.string.library_empty_count)
+                else pluralStringResource(R.plurals.library_count, count, count),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        IconButton(onClick = onSettings) {
+            Icon(
+                Icons.Default.Settings,
+                contentDescription = stringResource(R.string.library_settings),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }
@@ -150,13 +159,18 @@ private fun SearchField(query: String, onQuery: (String) -> Unit) {
         value = query,
         onValueChange = onQuery,
         singleLine = true,
-        placeholder = { Text("Zoek op naam of ingrediënt", style = MaterialTheme.typography.bodyMedium) },
+        placeholder = {
+            Text(
+                stringResource(R.string.library_search_hint),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        },
         leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, Modifier.size(20.dp)) },
         trailingIcon = {
             if (query.isNotEmpty()) {
                 Icon(
                     Icons.Default.Clear,
-                    contentDescription = "Zoekopdracht wissen",
+                    contentDescription = stringResource(R.string.library_search_clear),
                     modifier = Modifier
                         .size(20.dp)
                         .clickable { onQuery("") },
@@ -192,7 +206,12 @@ private fun FilterRow(
         FilterChip(
             selected = favouritesOnly,
             onClick = onToggleFavourites,
-            label = { Text("Favorieten", style = MaterialTheme.typography.labelLarge) },
+            label = {
+                Text(
+                    stringResource(R.string.library_favourites),
+                    style = MaterialTheme.typography.labelLarge,
+                )
+            },
             leadingIcon = { Icon(Icons.Default.Favorite, contentDescription = null, Modifier.size(16.dp)) },
             shape = MaterialTheme.shapes.small,
             colors = FilterChipDefaults.filterChipColors(
@@ -205,13 +224,13 @@ private fun FilterRow(
         var open by remember { mutableStateOf(false) }
         Box {
             TextButton(onClick = { open = true }) {
-                Text(sort.label, style = MaterialTheme.typography.labelLarge)
+                Text(stringResource(sort.labelRes), style = MaterialTheme.typography.labelLarge)
                 Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, Modifier.size(18.dp))
             }
             DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
                 SortOrder.entries.forEach { option ->
                     DropdownMenuItem(
-                        text = { Text(option.label) },
+                        text = { Text(stringResource(option.labelRes)) },
                         onClick = { onSort(option); open = false },
                     )
                 }
@@ -239,7 +258,7 @@ private fun RecipeCard(recipe: Recipe, onClick: () -> Unit) {
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
                 Text(
-                    recipe.title,
+                    recipe.displayTitle(),
                     style = MaterialTheme.typography.titleLarge,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
@@ -247,7 +266,10 @@ private fun RecipeCard(recipe: Recipe, onClick: () -> Unit) {
                 Spacer(Modifier.height(5.dp))
                 Text(
                     text = cardMeta(recipe),
-                    style = MaterialTheme.typography.bodySmall,
+                    // bodyMedium rather than bodySmall: this line is the only thing
+                    // that distinguishes two pasta recipes from each other, and it was
+                    // the first thing to disappear when reading at arm's length.
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -255,8 +277,8 @@ private fun RecipeCard(recipe: Recipe, onClick: () -> Unit) {
                 if (recipe.quality == ParseQuality.LINK_ONLY) {
                     Spacer(Modifier.height(5.dp))
                     Text(
-                        "alleen de link",
-                        style = MaterialTheme.typography.labelSmall,
+                        stringResource(R.string.library_link_only),
+                        style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.error,
                     )
                 }
@@ -264,7 +286,7 @@ private fun RecipeCard(recipe: Recipe, onClick: () -> Unit) {
             if (recipe.favorite) {
                 Icon(
                     Icons.Default.Favorite,
-                    contentDescription = "Favoriet",
+                    contentDescription = stringResource(R.string.library_favourite),
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier
                         .padding(start = 8.dp)
@@ -275,11 +297,12 @@ private fun RecipeCard(recipe: Recipe, onClick: () -> Unit) {
     }
 }
 
+@Composable
 private fun cardMeta(recipe: Recipe): String = listOfNotNull(
     recipe.siteName,
-    recipe.timeLabel(),
-    recipe.servingsLabelOrNull(),
-).joinToString("  ·  ").ifBlank { "Geen extra info" }
+    recipe.timeText(),
+    recipe.servingsText(),
+).joinToString("  ·  ").ifBlank { stringResource(R.string.library_no_info) }
 
 @Composable
 private fun EmptyLibrary() {

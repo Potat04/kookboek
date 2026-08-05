@@ -1,5 +1,6 @@
 package nl.potat04.kookboek.ui
 
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -15,18 +16,28 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import nl.potat04.kookboek.KookboekApp
+import nl.potat04.kookboek.R
 import nl.potat04.kookboek.data.ImportResult
 import nl.potat04.kookboek.data.Recipe
 import nl.potat04.kookboek.data.RecipeRepository
 
-enum class SortOrder(val label: String) {
-    NEWEST("Nieuwste eerst"),
-    TITLE("Op titel"),
-    QUICKEST("Snelste eerst"),
+enum class SortOrder(@StringRes val labelRes: Int) {
+    NEWEST(R.string.sort_newest),
+    TITLE(R.string.sort_title),
+    QUICKEST(R.string.sort_quickest),
 }
 
-/** A one-shot message plus an optional undo, shown in the snackbar. */
-data class Toast(val message: String, val undo: (() -> Unit)? = null, val actionLabel: String? = null)
+/**
+ * A one-shot message plus an optional undo, shown in the snackbar.
+ *
+ * The text is a [UiText] and not a `String`: the screen resolves it, so a snackbar
+ * always speaks the language that is set at the moment it appears.
+ */
+data class Toast(
+    val message: UiText,
+    val undo: (() -> Unit)? = null,
+    val actionLabel: UiText? = null,
+)
 
 class KookboekViewModel(private val repo: RecipeRepository) : ViewModel() {
 
@@ -104,8 +115,8 @@ class KookboekViewModel(private val repo: RecipeRepository) : ViewModel() {
         repo.delete(recipe)
         toasts.send(
             Toast(
-                message = "'${recipe.title}' verwijderd",
-                actionLabel = "Ongedaan maken",
+                message = UiText.res(R.string.toast_deleted, recipe.titleText()),
+                actionLabel = UiText.Res(R.string.action_undo),
                 undo = { viewModelScope.launch { repo.restore(recipe) } },
             )
         )
@@ -122,11 +133,11 @@ class KookboekViewModel(private val repo: RecipeRepository) : ViewModel() {
                 onDone(result.recipe.id)
             }
             is ImportResult.AlreadySaved -> {
-                toasts.send(Toast("Stond al in je kookboek"))
+                toasts.send(Toast(UiText.Res(R.string.toast_already_saved)))
                 onDone(result.recipe.id)
             }
             is ImportResult.Failed -> {
-                toasts.send(Toast(result.reason))
+                toasts.send(Toast(result.reason.text()))
                 onDone(null)
             }
         }
@@ -138,19 +149,29 @@ class KookboekViewModel(private val repo: RecipeRepository) : ViewModel() {
         _busy.value = false
         toasts.send(
             when (result) {
-                is ImportResult.Saved -> Toast("Opnieuw opgehaald — ${describe(result.recipe)}")
-                is ImportResult.AlreadySaved -> Toast("Niets veranderd")
-                is ImportResult.Failed -> Toast(result.reason)
+                is ImportResult.Saved ->
+                    Toast(UiText.res(R.string.toast_refreshed, describe(result.recipe)))
+                is ImportResult.AlreadySaved -> Toast(UiText.Res(R.string.toast_nothing_changed))
+                is ImportResult.Failed -> Toast(result.reason.text())
             }
         )
     }
 
-    private fun describe(recipe: Recipe): String = when {
-        recipe.ingredients.isNotEmpty() && recipe.steps.isNotEmpty() ->
-            "${recipe.ingredients.size} ingrediënten, ${recipe.steps.size} stappen"
-        recipe.hasContent -> "Deels gelezen — check het even"
-        else -> "Alleen de link bewaard"
+    /** "12 ingrediënten, 6 stappen" — counted here, worded by the screen. */
+    private fun describe(recipe: Recipe): UiText = when {
+        recipe.ingredients.isNotEmpty() && recipe.steps.isNotEmpty() -> UiText.Joined(
+            listOf(
+                UiText.Quantity(R.plurals.count_ingredients, recipe.ingredients.size),
+                UiText.Quantity(R.plurals.count_steps, recipe.steps.size),
+            )
+        )
+        recipe.hasContent -> UiText.Res(R.string.toast_partial)
+        else -> UiText.Res(R.string.toast_link_only)
     }
+
+    /** Pages that gave no title at all still have to be named in a snackbar. */
+    private fun Recipe.titleText(): UiText =
+        if (title.isBlank()) UiText.Res(R.string.recipe_untitled) else UiText.Raw(title)
 
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {

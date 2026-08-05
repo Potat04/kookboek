@@ -9,10 +9,17 @@ import nl.potat04.kookboek.parse.RecipeParser
 import org.jsoup.Jsoup
 import java.net.URI
 
+/**
+ * Why an import came back empty-handed. A reason and not a sentence: this layer has
+ * no business knowing which language the reader picked, and a recipe imported today
+ * may well be looked at in the other one tomorrow.
+ */
+enum class FailureReason { NO_VALID_LINK, FETCH_FAILED, NO_SOURCE_URL, NOTHING_SHARED }
+
 sealed interface ImportResult {
     data class Saved(val recipe: Recipe) : ImportResult
     data class AlreadySaved(val recipe: Recipe) : ImportResult
-    data class Failed(val reason: String, val url: String?) : ImportResult
+    data class Failed(val reason: FailureReason, val url: String?) : ImportResult
 }
 
 class RecipeRepository(
@@ -45,12 +52,13 @@ class RecipeRepository(
      * Returns quickly with whatever it could get — a bare link beats losing the page.
      */
     suspend fun import(rawUrl: String): ImportResult {
-        val url = normalizeUrl(rawUrl) ?: return ImportResult.Failed("Geen geldige link gevonden", null)
+        val url = normalizeUrl(rawUrl)
+            ?: return ImportResult.Failed(FailureReason.NO_VALID_LINK, null)
 
         existingFor(url)?.let { return ImportResult.AlreadySaved(it) }
 
         val parsed = fetchAndParse(url)
-            ?: return ImportResult.Failed("Kon de pagina niet ophalen", url)
+            ?: return ImportResult.Failed(FailureReason.FETCH_FAILED, url)
 
         val recipe = parsed.toRecipe(url)
         store.upsert(recipe)
@@ -66,8 +74,10 @@ class RecipeRepository(
 
     /** Re-reads the source page for an existing recipe, keeping notes, favourite and checks. */
     suspend fun refresh(recipe: Recipe): ImportResult {
-        val url = recipe.sourceUrl ?: return ImportResult.Failed("Dit recept heeft geen bronlink", null)
-        val parsed = fetchAndParse(url) ?: return ImportResult.Failed("Kon de pagina niet ophalen", url)
+        val url = recipe.sourceUrl
+            ?: return ImportResult.Failed(FailureReason.NO_SOURCE_URL, null)
+        val parsed = fetchAndParse(url)
+            ?: return ImportResult.Failed(FailureReason.FETCH_FAILED, url)
 
         val fresh = parsed.toRecipe(url).copy(
             id = recipe.id,
@@ -135,7 +145,9 @@ fun normalizeUrl(raw: String?): String? {
 }
 
 fun ParsedRecipe.toRecipe(url: String): Recipe = Recipe(
-    title = title.ifBlank { "Recept" },
+    // A blank title stays blank: the screen fills in "Naamloos recept" in whichever
+    // language is set, rather than freezing a Dutch word into the database.
+    title = title.trim(),
     sourceUrl = url,
     siteName = siteName ?: RecipeParser.host(url),
     author = author,
