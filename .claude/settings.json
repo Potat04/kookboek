@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew:*)",
+      "Bash(adb devices)",
+      "Bash(adb wait-for-device:*)",
+      "Bash(adb install:*)",
+      "Bash(adb uninstall:*)",
+      "Bash(adb shell:*)",
+      "Bash(adb logcat:*)",
+      "Bash(adb exec-out screencap:*)",
+      "Bash(adb emu kill)"
+    ],
+    "deny": [
+      "Read(./keystore.properties)",
+      "Read(./local.properties)",
+      "Read(./**/*.jks)",
+      "Read(./**/*.keystore)"
+    ]
+  }
+}

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Kept in sync with ui/theme/Color.kt so the window never flashes a wrong background. -->
+    <color name="paper">#F6F1E6</color>
+    <color name="paper_dark">#14120F</color>
+    <color name="ink">#1E1A16</color>
+    <color name="terracotta">#B4522A</color>
+</resources>

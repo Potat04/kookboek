@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Themed-icon layer: the launcher recolours this, so it is one flat colour. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <group
+        android:scaleX="2.3"
+        android:scaleY="2.3"
+        android:translateX="26.40"
+        android:translateY="27.38">
+
+        <path
+            android:fillColor="#FF000000"
+            android:pathData="M11.15,9.9 C9.1,8.45 5.95,7.7 3.2,8.05 C2.52,8.14 2,8.72 2,9.4 L2,19.25 C2,19.95 2.6,20.49 3.29,20.4 C5.85,20.08 8.95,20.75 11.15,22.1 Z" />
+        <path
+            android:fillColor="#FF000000"
+            android:pathData="M12.85,9.9 C14.9,8.45 18.05,7.7 20.8,8.05 C21.48,8.14 22,8.72 22,9.4 L22,19.25 C22,19.95 21.4,20.49 20.71,20.4 C18.15,20.08 15.05,20.75 12.85,22.1 Z" />
+
+        <path
+            android:pathData="M8.2,6.5 C8.2,5.5 6.9,5.2 6.9,4.2 C6.9,3.45 7.7,3.1 7.7,3.1"
+            android:strokeColor="#FF000000"
+            android:strokeWidth="1.5"
+            android:strokeLineCap="round" />
+        <path
+            android:pathData="M12,5.8 C12,4.65 10.5,4.3 10.5,3.15 C10.5,2.25 11.45,1.8 11.45,1.8"
+            android:strokeColor="#FF000000"
+            android:strokeWidth="1.5"
+            android:strokeLineCap="round" />
+        <path
+            android:pathData="M15.8,6.5 C15.8,5.5 14.5,5.2 14.5,4.2 C14.5,3.45 15.3,3.1 15.3,3.1"
+            android:strokeColor="#FF000000"
+            android:strokeWidth="1.5"
+            android:strokeLineCap="round" />
+    </group>
+</vector>
