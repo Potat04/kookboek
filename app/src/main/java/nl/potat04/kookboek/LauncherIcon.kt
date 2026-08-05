@@ -14,9 +14,16 @@ import nl.potat04.kookboek.data.PaletteId
  * is one `activity-alias` per palette, each with its own icon, with exactly one enabled
  * — see AndroidManifest.xml.
  *
- * "Exactly one" is the whole risk: with none enabled the app vanishes from the launcher
+ * Two things make this sharper than it looks.
+ *
+ * "Exactly one enabled" is the first: with none enabled the app vanishes from the launcher
  * and the only way back is the app list in Settings. So the new alias is switched on
  * *before* the others are switched off, and never the other way round.
+ *
+ * The second is *when* this may be called. Android removes any task rooted at a component
+ * it has just disabled, so this must only run while the app is off screen — see
+ * `KookboekApp.LauncherIconSync`. Call it from the foreground and the app drops to the
+ * background a moment later.
  */
 private val PaletteId.launcherAlias: String
     get() = "nl.potat04.kookboek.Launcher" + when (this) {

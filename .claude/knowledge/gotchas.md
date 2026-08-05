@@ -29,6 +29,12 @@ tekens gingen stuk bij het kopiëren.
 **`List` heeft al `component1()` t/m `component5()`.** Zelf een `component4()` schrijven voor
 destructuring geeft een redeclaratie-conflict.
 
+**Een launcher-icoon volgt geen thema — een `activity-alias` wel.** Android kiest het app-icoon uit
+de manifest voordat er code draait, dus tinten kan niet. Het gaat via één alias per palet met
+precies één ingeschakeld; zie [ui.md](ui.md). Twee valkuilen: nul ingeschakeld haalt de app van je
+beginscherm af, en de launcher cachet het icoon, dus na het omzetten loopt wat je ziet achter op
+wat er aan staat. Controleer met `cmd package resolve-activity`, niet met je ogen.
+
 **Een `onClick`-parameter is geen `clickable`.** De palet-swatches op het instellingenscherm kregen
 netjes een `onClick` doorgegeven die nergens aan een modifier hing. Het compileert, het ziet er goed
 uit, en zes van de vier keuzes doen niets. Alleen zichtbaar door de app echt aan te tikken — geen
