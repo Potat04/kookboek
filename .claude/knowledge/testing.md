@@ -63,6 +63,22 @@ Screenshot om te zien wat er staat:
 adb exec-out screencap -p > screen.png
 ```
 
+Nakijken welk launcher-icoon aan staat. Doe dit en niet "kijken op het beginscherm": de launcher
+cachet het icoon, dus visueel loopt het achter terwijl de instelling al om is.
+
+```bash
+adb -s emulator-5554 shell cmd package resolve-activity --brief -c android.intent.category.LAUNCHER nl.potat04.kookboek
+```
+
+En of er precies één alias aan staat — nul betekent dat de app van het beginscherm verdwenen is:
+
+```bash
+adb -s emulator-5554 shell dumpsys package nl.potat04.kookboek | grep -A8 disabledComponents
+```
+
+Let op dat de reconcile bij het opstarten in een coroutine loopt: vraag je het direct na
+`am start`, dan kun je de oude waarde nog zien.
+
 De taal omzetten zonder te tikken — dit is exact wat het instellingenscherm doet:
 
 ```bash

@@ -124,6 +124,33 @@ in de configuratie van het toestel. Elke app met een eigen donkerstand-schakelaa
 kost een leeg opstartvenster (en dus een merkbare stilte bij het starten) om het weg te halen, en
 dat is de ruil niet waard. Wie de standaard "Volg de telefoon" laat staan, merkt er niets van.
 
+## Het icoon in de launcher
+
+Het logo *in* de app is een silhouet (`drawable/ic_logo.xml`, zwart) dat altijd via
+`Icon(tint = …)` getekend wordt, dus dat volgt het palet gratis.
+
+Het icoon op je beginscherm kan dat niet: Android leest dat uit de manifest, lang voordat onze code
+draait. Daarom staat er een `activity-alias` per palet in de manifest, elk met zijn eigen
+`ic_launcher_<palet>.xml`, en is er precies één ingeschakeld. `LauncherIcon.kt` wisselt om;
+`KookboekApp` kijkt naar de palet-flow en houdt het bij, ook na een restore uit een back-up — daar
+komen de preferences wél mee en staat de manifest-standaard nog aan.
+
+Drie dingen om te weten:
+
+- **Er mag nooit nul ingeschakeld staan.** Dan verdwijnt de app van je beginscherm en kom je er
+  alleen nog via de app-lijst in Instellingen. Vandaar dat het nieuwe alias áán gaat vóórdat de
+  andere uit gaan, nooit omgekeerd. `LauncherIconTest` controleert dat elk palet een alias heeft,
+  dat er precies één in de manifest aan staat, en dat `MainActivity` zelf geen launcher-filter meer
+  heeft (twee filters = de app staat twee keer in je lijst).
+- **De launcher cachet het icoon.** Na het omzetten kan het even duren of een herstart van de
+  launcher vragen voordat je het ziet; `cmd package resolve-activity` vertelt je meteen wat er
+  echt aan staat. Zie [testing.md](testing.md).
+- **De achtergrondkleur is het lichte `primary` van dat palet**, en staat als
+  `@color/launcher_<palet>` in `colors.xml`. Een launcher-icoon is één statisch plaatje, dus het
+  kan het palet volgen maar niet licht/donker. Verander je een accent, verander het daar dan mee.
+  Zet iemand "thematische iconen" aan in Android, dan wint de `monochrome`-laag en doet onze kleur
+  niet meer mee — dat is de bedoeling van die instelling.
+
 ## UX-regels die niet onderhandelbaar zijn
 
 - **Nederlands en Engels, met Engels als terugvaloptie.** Zie
