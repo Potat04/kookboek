@@ -27,6 +27,22 @@
             android:theme="@style/Theme.Kookboek" />
 
         <!--
+          The aliases point here and not at MainActivity, so that the task you end up in is
+          rooted at MainActivity. Disabling an alias takes its tasks with it, and that would
+          otherwise be your own session. See LauncherRouter.
+
+          taskAffinity="" gives this its own throwaway task; excludeFromRecents keeps that
+          task out of the overview; noHistory makes sure nothing of it is left behind.
+        -->
+        <activity
+            android:name=".LauncherRouter"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.Kookboek" />
+
+        <!--
           One alias per palette, each with its own icon, and exactly one enabled at a
           time. LauncherIcon.kt does the switching; KookboekApp keeps it in step with the
           stored choice.
@@ -37,7 +53,7 @@
         -->
         <activity-alias
             android:name=".LauncherSinaasappel"
-            android:targetActivity=".MainActivity"
+            android:targetActivity=".LauncherRouter"
             android:enabled="true"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_sinaasappel"
@@ -51,7 +67,7 @@
 
         <activity-alias
             android:name=".LauncherOlijf"
-            android:targetActivity=".MainActivity"
+            android:targetActivity=".LauncherRouter"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_olijf"
@@ -65,7 +81,7 @@
 
         <activity-alias
             android:name=".LauncherBosbes"
-            android:targetActivity=".MainActivity"
+            android:targetActivity=".LauncherRouter"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_bosbes"
@@ -79,7 +95,7 @@
 
         <activity-alias
             android:name=".LauncherRabarber"
-            android:targetActivity=".MainActivity"
+            android:targetActivity=".LauncherRouter"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_rabarber"
@@ -93,7 +109,7 @@
 
         <activity-alias
             android:name=".LauncherEspresso"
-            android:targetActivity=".MainActivity"
+            android:targetActivity=".LauncherRouter"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_espresso"
@@ -107,7 +123,7 @@
 
         <activity-alias
             android:name=".LauncherInkt"
-            android:targetActivity=".MainActivity"
+            android:targetActivity=".LauncherRouter"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_inkt"

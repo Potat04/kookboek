@@ -39,9 +39,11 @@ class LauncherIconTest {
                 "${alias.attr("android:name")} is not a launcher entry",
                 "android.intent.category.LAUNCHER" in categories,
             )
+            // Not MainActivity: a task rooted at an alias is destroyed when that alias is
+            // disabled, and that task would be the reader's own session. See LauncherRouter.
             assertEquals(
-                "${alias.attr("android:name")} must point at MainActivity",
-                ".MainActivity",
+                "${alias.attr("android:name")} must point at LauncherRouter, not MainActivity",
+                ".LauncherRouter",
                 alias.attr("android:targetActivity"),
             )
             assertEquals(
@@ -86,6 +88,28 @@ class LauncherIconTest {
                 "@color/launcher_${it.stored}" in icon.readText(),
             )
         }
+    }
+
+    /**
+     * The whole point of the router is that it gets a throwaway task of its own. Lose any
+     * one of these three attributes and the reader's session ends up back on the alias,
+     * where changing the palette destroys it.
+     */
+    @Test
+    fun `the router stays out of the way`() {
+        val router = manifest().select("activity")
+            .single { it.attr("android:name") == ".LauncherRouter" }
+        assertEquals(
+            "the router needs its own task, or MainActivity stays rooted at the alias",
+            "",
+            router.attr("android:taskAffinity"),
+        )
+        assertTrue(
+            "taskAffinity must be declared as empty, not left out",
+            router.hasAttr("android:taskAffinity"),
+        )
+        assertEquals("the router's task must not show up in Recents", "true", router.attr("android:excludeFromRecents"))
+        assertEquals("the router must be launchable through the aliases", "true", router.attr("android:exported"))
     }
 
     /** MainActivity must not carry a launcher filter of its own, or the app shows twice. */

@@ -135,13 +135,28 @@ draait. Daarom staat er een `activity-alias` per palet in de manifest, elk met z
 `KookboekApp` kijkt naar de palet-flow en houdt het bij, ook na een restore uit een back-up — daar
 komen de preferences wél mee en staat de manifest-standaard nog aan.
 
-Drie dingen om te weten:
+**De aliassen wijzen naar `LauncherRouter`, niet naar `MainActivity`.** Dat is geen omweg maar de
+kern van de zaak: Android gooit élke task weg die *geworteld* is in een component die je net hebt
+uitgezet, en `DONT_KILL_APP` beschermt alleen het proces. Wijzen de aliassen rechtstreeks naar
+`MainActivity`, dan staat de task waar de lezer in zit op het alias waarmee hij de app opende, en
+gooit een andere kleur kiezen zijn eigen sessie weg: de app zakt naar de achtergrond en zijn kaart
+is uit het overzicht verdwenen, precies alsof hij gecrasht was. Dit is echt gebeurd; het uitstellen
+tot de app van het scherm is verschuift alleen het moment waarop je het merkt.
+
+`LauncherRouter` heeft daarom `taskAffinity=""` (een eigen wegwerp-task, buiten het overzicht) en
+start `MainActivity` met `FLAG_ACTIVITY_NEW_TASK`, zodat de task die je houdt in `MainActivity`
+geworteld is waar geen alias bij kan. Hij tekent niets, draagt hetzelfde thema zodat het
+opstartvenster niet verspringt, en gebruikt géén `CLEAR_TASK` — een bestaande sessie komt terug
+zoals je hem verliet.
+
+Vier dingen om te weten:
 
 - **Er mag nooit nul ingeschakeld staan.** Dan verdwijnt de app van je beginscherm en kom je er
   alleen nog via de app-lijst in Instellingen. Vandaar dat het nieuwe alias áán gaat vóórdat de
   andere uit gaan, nooit omgekeerd. `LauncherIconTest` controleert dat elk palet een alias heeft,
-  dat er precies één in de manifest aan staat, en dat `MainActivity` zelf geen launcher-filter meer
-  heeft (twee filters = de app staat twee keer in je lijst).
+  dat er precies één in de manifest aan staat, dat ze allemaal naar de router wijzen, dat de router
+  zijn eigen task houdt, en dat `MainActivity` zelf geen launcher-filter meer heeft (twee filters =
+  de app staat twee keer in je lijst).
 - **De launcher cachet het icoon.** Na het omzetten kan het even duren of een herstart van de
   launcher vragen voordat je het ziet; `cmd package resolve-activity` vertelt je meteen wat er
   echt aan staat. Zie [testing.md](testing.md).

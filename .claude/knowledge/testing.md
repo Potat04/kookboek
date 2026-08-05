@@ -63,6 +63,14 @@ Screenshot om te zien wat er staat:
 adb exec-out screencap -p > screen.png
 ```
 
+**Start zoals een gebruiker start** als je aan het launcher-icoon of aan tasks werkt. Met
+`am start -n .../.MainActivity` is je task in `MainActivity` geworteld en mis je precies de bug die
+er dan zit:
+
+```bash
+adb -s emulator-5554 shell monkey -p nl.potat04.kookboek -c android.intent.category.LAUNCHER 1
+```
+
 Nakijken welk launcher-icoon aan staat. Doe dit en niet "kijken op het beginscherm": de launcher
 cachet het icoon, dus visueel loopt het achter terwijl de instelling al om is.
 
