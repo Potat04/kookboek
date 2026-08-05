@@ -16,16 +16,108 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Kookboek">
 
+        <!--
+          No launcher intent-filter here on purpose: that lives on the aliases below, so
+          the icon on the home screen can follow the chosen palette.
+        -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
-            android:theme="@style/Theme.Kookboek">
+            android:theme="@style/Theme.Kookboek" />
+
+        <!--
+          One alias per palette, each with its own icon, and exactly one enabled at a
+          time. LauncherIcon.kt does the switching; KookboekApp keeps it in step with the
+          stored choice.
+
+          Sinaasappel is the one enabled here because it is the default palette. Every
+          alias must stay declared: PaletteId maps onto these names, and a missing one
+          means the app has no icon at all. LauncherIconTest checks that.
+        -->
+        <activity-alias
+            android:name=".LauncherSinaasappel"
+            android:targetActivity=".MainActivity"
+            android:enabled="true"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_sinaasappel"
+            android:roundIcon="@mipmap/ic_launcher_sinaasappel"
+            android:label="@string/app_name">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".LauncherOlijf"
+            android:targetActivity=".MainActivity"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_olijf"
+            android:roundIcon="@mipmap/ic_launcher_olijf"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".LauncherBosbes"
+            android:targetActivity=".MainActivity"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_bosbes"
+            android:roundIcon="@mipmap/ic_launcher_bosbes"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".LauncherRabarber"
+            android:targetActivity=".MainActivity"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_rabarber"
+            android:roundIcon="@mipmap/ic_launcher_rabarber"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".LauncherEspresso"
+            android:targetActivity=".MainActivity"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_espresso"
+            android:roundIcon="@mipmap/ic_launcher_espresso"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".LauncherInkt"
+            android:targetActivity=".MainActivity"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_inkt"
+            android:roundIcon="@mipmap/ic_launcher_inkt"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
 
         <!--
           Browser > Share > Kookboek.

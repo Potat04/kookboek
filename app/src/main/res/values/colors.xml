@@ -9,4 +9,20 @@
     -->
     <color name="paper">#F6F1E6</color>
     <color name="paper_dark">#15130F</color>
+
+    <!--
+      The launcher icon's background, one per palette: each is that palette's LIGHT
+      `primary` from ui/theme/Palettes.kt. The mark on top is always the cream from
+      ic_launcher_foreground.xml, which reads on all six (5.4:1 at worst, Rabarber).
+
+      Light `primary` and not dark: a launcher icon is one static image, so it cannot
+      follow light/dark — only the palette. Change a palette's accent and change it here
+      too, or the icon stops being that palette's colour.
+    -->
+    <color name="launcher_sinaasappel">#A2441C</color>
+    <color name="launcher_olijf">#55682B</color>
+    <color name="launcher_bosbes">#3F3D96</color>
+    <color name="launcher_rabarber">#BC2E4E</color>
+    <color name="launcher_espresso">#6B3A1C</color>
+    <color name="launcher_inkt">#1B2A44</color>
 </resources>

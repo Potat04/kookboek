@@ -9,7 +9,9 @@ import nl.potat04.kookboek.R
 /**
  * The two languages the app is written in, plus "whatever the phone says".
  *
- * Dutch is the untagged default in `res/values/`, English lives in `res/values-en/`.
+ * English is the untagged default in `res/values/` and Dutch is in `res/values-nl/`,
+ * which means a phone set to neither — German, say — gets English rather than a
+ * language it almost certainly cannot read.
  */
 enum class AppLanguage(val tag: String, @param:StringRes val labelRes: Int) {
     SYSTEM("", R.string.settings_follow_system),

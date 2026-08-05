@@ -126,8 +126,8 @@ dat is de ruil niet waard. Wie de standaard "Volg de telefoon" laat staan, merkt
 
 ## UX-regels die niet onderhandelbaar zijn
 
-- **Nederlands is de standaard, Engels kan.** Zie [localization.md](localization.md). Geen
-  zichtbare tekst in Kotlin-literals.
+- **Nederlands en Engels, met Engels als terugvaloptie.** Zie
+  [localization.md](localization.md). Geen zichtbare tekst in Kotlin-literals.
 - **Nooit liegen over wat er gelukt is.** Kon de parser de ingrediënten niet vinden, dan zegt het
   scherm dat, met de knoppen om het origineel te openen, opnieuw te proberen of zelf in te vullen.
   Geen leeg recept dat doet alsof.

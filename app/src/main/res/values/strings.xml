@@ -1,155 +1,154 @@
 <resources>
     <!--
-      Dutch is the untagged default: this is a Dutch app that also speaks English.
-      The English set lives in res/values-en/strings.xml and must stay key-for-key
-      identical. The reader picks a language on the settings screen.
+      English, and the default: this is the unqualified file, so any device whose
+      language Kookboek does not have lands here. Dutch is in res/values-nl/strings.xml,
+      and the two must stay key-for-key identical — add a string and you add it twice.
+
+      British spelling, and the same tone as the Dutch: plain, warm, no exclamation
+      marks. The app name is a Dutch word and stays one.
     -->
     <string name="app_name">Kookboek</string>
-    <string name="share_label">Bewaar in Kookboek</string>
+    <string name="share_label">Save to Kookboek</string>
 
-    <!-- Buttons and icons that turn up on more than one screen -->
-    <string name="action_back">Terug</string>
-    <string name="action_cancel">Annuleren</string>
-    <string name="action_save">Bewaren</string>
-    <string name="action_delete">Verwijderen</string>
-    <string name="action_edit">Bewerken</string>
-    <string name="action_more">Meer</string>
-    <string name="action_close">Sluiten</string>
-    <string name="action_done">Klaar</string>
-    <string name="action_open">Openen</string>
-    <string name="action_undo">Ongedaan maken</string>
+    <string name="action_back">Back</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_save">Save</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_edit">Edit</string>
+    <string name="action_more">More</string>
+    <string name="action_close">Close</string>
+    <string name="action_done">Done</string>
+    <string name="action_open">Open</string>
+    <string name="action_undo">Undo</string>
 
-    <!-- Library -->
-    <string name="library_empty_count">nog leeg</string>
+    <string name="library_empty_count">still empty</string>
     <plurals name="library_count">
-        <item quantity="one">%d recept</item>
-        <item quantity="other">%d recepten</item>
+        <item quantity="one">%d recipe</item>
+        <item quantity="other">%d recipes</item>
     </plurals>
-    <string name="library_search_hint">Zoek op naam of ingrediënt</string>
-    <string name="library_search_clear">Zoekopdracht wissen</string>
-    <string name="library_favourites">Favorieten</string>
-    <string name="library_favourite">Favoriet</string>
-    <string name="library_add">Toevoegen</string>
-    <string name="library_no_info">Geen extra info</string>
-    <string name="library_link_only">alleen de link</string>
-    <string name="library_empty_title">Nog een leeg kookboek</string>
-    <string name="library_empty_body">Vind een recept in je browser, tik op Delen en kies Kookboek. De app leest het recept van de pagina en bewaart het hier — ook als de site later offline gaat.</string>
-    <string name="library_empty_hint">Of tik op Toevoegen om een link te plakken of zelf een recept te schrijven.</string>
-    <string name="library_no_matches">Niets gevonden</string>
-    <string name="library_no_matches_favourites">Geen favorieten die hierop passen</string>
-    <string name="library_no_matches_body">Probeer een ander woord, of zoek op een ingrediënt.</string>
+    <string name="library_search_hint">Search by name or ingredient</string>
+    <string name="library_search_clear">Clear search</string>
+    <string name="library_favourites">Favourites</string>
+    <string name="library_favourite">Favourite</string>
+    <string name="library_add">Add</string>
+    <string name="library_no_info">No extra info</string>
+    <string name="library_link_only">link only</string>
+    <string name="library_empty_title">Still an empty cookbook</string>
+    <string name="library_empty_body">Find a recipe in your browser, tap Share and pick Kookboek. The app reads the recipe off the page and keeps it here — even if the site goes offline later.</string>
+    <string name="library_empty_hint">Or tap Add to paste a link or write a recipe yourself.</string>
+    <string name="library_no_matches">Nothing found</string>
+    <string name="library_no_matches_favourites">No favourites match that</string>
+    <string name="library_no_matches_body">Try another word, or search by ingredient.</string>
 
-    <string name="sort_newest">Nieuwste eerst</string>
-    <string name="sort_title">Op titel</string>
-    <string name="sort_quickest">Snelste eerst</string>
+    <string name="sort_newest">Newest first</string>
+    <string name="sort_title">By title</string>
+    <string name="sort_quickest">Quickest first</string>
 
-    <!-- Recipe -->
-    <string name="recipe_untitled">Naamloos recept</string>
+    <string name="recipe_untitled">Untitled recipe</string>
     <string name="recipe_time_minutes">%d min</string>
-    <string name="recipe_time_hours">%d uur</string>
-    <!-- Voluit, zoals de twee regels erboven: "45 min", "2 uur", "1 uur 30 min". -->
-    <string name="recipe_time_hours_minutes">%1$d uur %2$d min</string>
+    <string name="recipe_time_hours">%d hr</string>
+    <string name="recipe_time_hours_minutes">%1$d hr %2$d min</string>
     <plurals name="recipe_servings_count">
-        <item quantity="one">%d portie</item>
-        <item quantity="other">%d porties</item>
+        <item quantity="one">%d serving</item>
+        <item quantity="other">%d servings</item>
     </plurals>
-    <string name="recipe_favourite_add">Favoriet maken</string>
-    <string name="recipe_favourite_remove">Uit favorieten</string>
-    <string name="recipe_refresh">Opnieuw ophalen</string>
-    <string name="recipe_refreshing">Bezig met ophalen…</string>
-    <string name="recipe_ingredients">Ingrediënten</string>
-    <string name="recipe_method">Bereiding</string>
-    <string name="recipe_notes">Notities</string>
-    <string name="recipe_notes_hint">Wat je de volgende keer anders doet…</string>
-    <string name="recipe_clear_checks">Vinkjes wissen</string>
-    <string name="recipe_servings">Porties</string>
-    <string name="recipe_servings_from">omgerekend vanaf %d</string>
-    <string name="recipe_servings_more">Meer porties</string>
-    <string name="recipe_servings_fewer">Minder porties</string>
-    <string name="recipe_view_original">Bekijk origineel op %s</string>
-    <string name="recipe_view_original_generic">de site</string>
-    <string name="recipe_delete_title">Recept verwijderen?</string>
-    <string name="recipe_delete_body">\'%s\' gaat uit je kookboek. Je kunt dit direct daarna ongedaan maken.</string>
-    <string name="recipe_unread_title">Het recept zelf kwam er niet uit</string>
-    <string name="recipe_unread_body">Deze pagina publiceert geen leesbaar recept — de link is wel bewaard.</string>
-    <string name="recipe_unread_open">Open origineel</string>
-    <string name="recipe_unread_retry">Opnieuw</string>
-    <string name="recipe_unread_write">Zelf invullen</string>
+    <string name="recipe_favourite_add">Add to favourites</string>
+    <string name="recipe_favourite_remove">Remove from favourites</string>
+    <string name="recipe_refresh">Fetch again</string>
+    <!-- Distinct from add_fetching: this one is already under way, in a disabled menu item. -->
+    <string name="recipe_refreshing">Fetching it again…</string>
+    <string name="recipe_ingredients">Ingredients</string>
+    <string name="recipe_method">Method</string>
+    <string name="recipe_notes">Notes</string>
+    <string name="recipe_notes_hint">What you\'d do differently next time…</string>
+    <string name="recipe_clear_checks">Clear ticks</string>
+    <string name="recipe_servings">Servings</string>
+    <string name="recipe_servings_from">scaled from %d</string>
+    <string name="recipe_servings_more">More servings</string>
+    <string name="recipe_servings_fewer">Fewer servings</string>
+    <string name="recipe_view_original">View the original on %s</string>
+    <string name="recipe_view_original_generic">the site</string>
+    <string name="recipe_delete_title">Delete this recipe?</string>
+    <string name="recipe_delete_body">\'%s\' leaves your cookbook. You can undo it straight afterwards.</string>
+    <string name="recipe_unread_title">The recipe itself didn\'t come through</string>
+    <string name="recipe_unread_body">This page publishes no readable recipe — the link has been kept.</string>
+    <string name="recipe_unread_open">Open the original</string>
+    <string name="recipe_unread_retry">Try again</string>
+    <string name="recipe_unread_write">Fill it in yourself</string>
 
-    <!-- Add a recipe -->
-    <string name="add_title">Recept toevoegen</string>
-    <string name="add_body">Meestal makkelijker: deel de pagina vanuit je browser naar Kookboek.</string>
-    <string name="add_url_label">Link naar het recept</string>
+    <string name="add_title">Add a recipe</string>
+    <string name="add_body">Usually easier: share the page from your browser to Kookboek.</string>
+    <string name="add_url_label">Link to the recipe</string>
     <string name="add_url_hint">https://…</string>
-    <string name="add_paste">Plakken</string>
-    <string name="add_fetch">Ophalen</string>
-    <string name="add_fetching">Ophalen…</string>
-    <string name="add_write_own">Of schrijf zelf een recept</string>
+    <string name="add_paste">Paste</string>
+    <string name="add_fetch">Fetch</string>
+    <string name="add_fetching">Fetching…</string>
+    <string name="add_write_own">Or write a recipe yourself</string>
 
-    <!-- Edit -->
-    <string name="edit_new_title">Nieuw recept</string>
-    <string name="edit_title">Recept bewerken</string>
-    <string name="edit_field_title">Titel</string>
-    <string name="edit_field_minutes">Minuten</string>
-    <string name="edit_field_ingredients">Ingrediënten — één per regel</string>
-    <string name="edit_field_steps">Stappen — één per regel, \'# kopje\' maakt een tussenkop</string>
+    <string name="edit_new_title">New recipe</string>
+    <string name="edit_title">Edit recipe</string>
+    <string name="edit_field_title">Title</string>
+    <string name="edit_field_minutes">Minutes</string>
+    <string name="edit_field_ingredients">Ingredients — one per line</string>
+    <string name="edit_field_steps">Steps — one per line, \'# heading\' makes a subheading</string>
 
-    <!-- The sheet that floats over the browser -->
-    <string name="share_working_title">Recept ophalen…</string>
-    <string name="share_working_body">Even de pagina lezen</string>
-    <string name="share_failed_title">Niet gelukt</string>
-    <string name="share_saved">Bewaard in Kookboek</string>
-    <string name="share_already_saved">Stond er al in</string>
-    <string name="share_summary_no_ingredients">Geen ingrediënten gevonden — check het even</string>
-    <string name="share_summary_no_steps">Geen stappen gevonden — check het even</string>
-    <string name="share_summary_link_only">Alleen de link bewaard</string>
+    <string name="share_working_title">Fetching the recipe…</string>
+    <string name="share_working_body">Just reading the page</string>
+    <string name="share_failed_title">That didn\'t work</string>
+    <string name="share_saved">Saved to Kookboek</string>
+    <string name="share_already_saved">Already in there</string>
+    <string name="share_summary_no_ingredients">No ingredients found — worth a look</string>
+    <string name="share_summary_no_steps">No steps found — worth a look</string>
+    <string name="share_summary_link_only">Kept the link only</string>
 
-    <!-- Snackbars -->
     <plurals name="count_ingredients">
-        <item quantity="one">%d ingrediënt</item>
-        <item quantity="other">%d ingrediënten</item>
+        <item quantity="one">%d ingredient</item>
+        <item quantity="other">%d ingredients</item>
     </plurals>
     <plurals name="count_steps">
-        <item quantity="one">%d stap</item>
-        <item quantity="other">%d stappen</item>
+        <item quantity="one">%d step</item>
+        <item quantity="other">%d steps</item>
     </plurals>
-    <string name="toast_deleted">\'%s\' verwijderd</string>
-    <string name="toast_already_saved">Stond al in je kookboek</string>
-    <string name="toast_nothing_changed">Niets veranderd</string>
-    <string name="toast_refreshed">Opnieuw opgehaald — %s</string>
-    <string name="toast_partial">Deels gelezen — check het even</string>
+    <string name="toast_deleted">\'%s\' deleted</string>
+    <string name="toast_already_saved">Already in your cookbook</string>
+    <string name="toast_nothing_changed">Nothing changed</string>
+    <string name="toast_refreshed">Fetched again — %s</string>
+    <string name="toast_partial">Partly read — worth a look</string>
 
-    <!-- What went wrong while importing -->
-    <string name="error_no_valid_link">Geen geldige link gevonden</string>
-    <string name="error_fetch_failed">Kon de pagina niet ophalen</string>
-    <string name="error_no_source_url">Dit recept heeft geen bronlink</string>
-    <string name="error_nothing_shared">Hier zat geen link in</string>
+    <string name="error_no_valid_link">No valid link found</string>
+    <string name="error_fetch_failed">Could not fetch the page</string>
+    <string name="error_no_source_url">This recipe has no source link</string>
+    <string name="error_nothing_shared">There was no link in that</string>
 
-    <!-- Settings -->
-    <string name="settings_title">Instellingen</string>
-    <string name="settings_palette">Kleuren</string>
-    <string name="settings_mode">Licht of donker</string>
-    <string name="settings_follow_system">Volg de telefoon</string>
-    <string name="settings_mode_light">Licht</string>
-    <string name="settings_mode_dark">Donker</string>
-    <string name="settings_text_size">Tekstgrootte</string>
+    <string name="settings_title">Settings</string>
+    <string name="settings_palette">Colours</string>
+    <string name="settings_mode">Light or dark</string>
+    <string name="settings_follow_system">Follow the phone</string>
+    <string name="settings_mode_light">Light</string>
+    <string name="settings_mode_dark">Dark</string>
+    <string name="settings_text_size">Text size</string>
     <string name="settings_text_compact">Compact</string>
-    <string name="settings_text_normal">Normaal</string>
-    <string name="settings_text_large">Groot</string>
-    <string name="settings_text_huge">Extra groot</string>
-    <string name="settings_language">Taal</string>
+    <string name="settings_text_normal">Normal</string>
+    <string name="settings_text_large">Large</string>
+    <string name="settings_text_huge">Extra large</string>
+    <string name="settings_language">Language</string>
+    <!-- Endonyms on purpose: a language is named in itself, in both files. -->
     <string name="settings_language_dutch">Nederlands</string>
-    <string name="settings_language_english">Engels</string>
-    <string name="settings_language_note">De app laadt even opnieuw als je de taal wisselt. Je recepten blijven zoals ze zijn — die staan in de taal van de site waar ze vandaan komen.</string>
-    <string name="settings_sample_title">Loempia\'s uit de airfryer</string>
-    <string name="settings_sample_summary">Knapperig zonder een pan olie, en in een halfuur op tafel.</string>
-    <string name="settings_sample_step">Laat het deeg een kwartier rusten onder een theedoek.</string>
+    <string name="settings_language_english">English</string>
+    <string name="settings_language_note">The app reloads briefly when you switch languages. Your recipes stay as they are — those are in the language of the site they came from.</string>
+    <!--
+      A type specimen, not a recipe: it says what it is, so nobody mistakes the preview
+      for something in their cookbook. Deliberately names no dish and no site.
+    -->
+    <string name="settings_sample_title">A recipe in these letters</string>
+    <string name="settings_sample_summary">This is the short description that sits above a recipe.</string>
+    <string name="settings_sample_step">And this is how a step reads from the far side of the counter.</string>
     <string name="settings_version">Kookboek %s</string>
 
-    <string name="palette_sinaasappel">Sinaasappel</string>
-    <string name="palette_olijf">Olijf</string>
-    <string name="palette_bosbes">Bosbes</string>
-    <string name="palette_rabarber">Rabarber</string>
+    <string name="palette_sinaasappel">Orange</string>
+    <string name="palette_olijf">Olive</string>
+    <string name="palette_bosbes">Blueberry</string>
+    <string name="palette_rabarber">Rhubarb</string>
     <string name="palette_espresso">Espresso</string>
-    <string name="palette_inkt">Inkt</string>
+    <string name="palette_inkt">Ink</string>
 </resources>

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -183,9 +184,12 @@ private fun PaletteSwatch(paletteId: PaletteId, selected: Boolean, onClick: () -
 
     Column(
         Modifier
-            // A minimum, not a width: "Sinaasappel" is one long word that cannot wrap,
-            // and at the larger text sizes a fixed 102dp breaks it mid-word. The label
-            // below sets the real width; this only stops the short names being narrow.
+            // The name sets the width. "Sinaasappel" is one long word that cannot wrap,
+            // so a fixed 102dp breaks it mid-word at the larger text sizes — but a bare
+            // minimum is no good either: inside a FlowRow the column would then take the
+            // whole row and the grid becomes a list. IntrinsicSize.Min asks the label how
+            // wide it needs to be; the 102dp floor keeps "Inkt" from being a stub.
+            .width(IntrinsicSize.Min)
             .widthIn(min = 102.dp)
             .clip(shape)
             // selectable rather than clickable: this is one choice out of six, and a
@@ -306,9 +310,9 @@ private fun TypeSample() {
             )
             Spacer(Modifier.height(8.dp))
             // Built from the same resources a real card uses, so the sample cannot
-            // drift away from what it is a sample of.
+            // drift away from what it is a sample of. No site name: a real domain in
+            // here reads as an endorsement, and a made-up one is somebody's site.
             val meta = listOf(
-                "leukerecepten.nl",
                 stringResource(R.string.recipe_time_minutes, SAMPLE_MINUTES),
                 pluralStringResource(R.plurals.recipe_servings_count, SAMPLE_SERVINGS, SAMPLE_SERVINGS),
             ).joinToString("  ·  ")

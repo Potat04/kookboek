@@ -28,9 +28,10 @@ verandert aan de build of de opslag, lees de betreffende pagina in `.claude/know
    AGP 9.1.1 brengt zijn eigen Kotlin 2.2.10 mee. De Compose-, serialization- en KSP-plugins
    moeten daar exact op aansluiten. Kotlin los updaten breekt de build gegarandeerd.
 2. **Geen `org.jetbrains.kotlin.android` plugin toevoegen.** Die zit al in AGP en botst.
-3. **Geen zichtbare tekst in Kotlin.** De app is Nederlands en spreekt ook Engels: alles staat in
-   `res/values/strings.xml` (Nederlands, de default) en `res/values-en/strings.xml`, sleutel voor
-   sleutel gelijk. Ook foutmeldingen en `contentDescription`. Lever je een string, lever dan beide.
+3. **Geen zichtbare tekst in Kotlin.** De app spreekt Nederlands en Engels: alles staat in
+   `res/values/strings.xml` (Engels, en de fallback voor elke taal die de app niet heeft) en
+   `res/values-nl/strings.xml`, sleutel voor sleutel gelijk. Ook foutmeldingen en
+   `contentDescription`. Lever je een string, lever dan beide — `StringResourcesTest` faalt anders.
    Code, commentaar en commits zijn Engels. Zie [localization.md](.claude/knowledge/localization.md).
 4. **`keystore.properties` en `*.jks` gaan nooit de repo in.** Staan in `.gitignore`. Niet
    opnemen in output, niet loggen, niet naar buiten sturen.
@@ -80,8 +81,8 @@ app/src/main/java/nl/potat04/kookboek/
     theme/Palettes.kt   de zes paletten, contrast-gecontroleerd
     ...                 overige schermen en sheets
 app/src/main/res/
-  values/strings.xml    Nederlands (de default)
-  values-en/strings.xml Engels, sleutel voor sleutel gelijk
+  values/strings.xml    Engels — het ongekwalificeerde bestand, dus ook de fallback
+  values-nl/strings.xml Nederlands, sleutel voor sleutel gelijk
 app/src/test/           unit tests + opgeslagen pagina's als fixtures
 app/schemas/            Room-schema, ingecheckt voor toekomstige migraties
 ```

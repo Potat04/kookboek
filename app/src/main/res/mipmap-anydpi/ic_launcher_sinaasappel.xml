@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  The app's default icon, used wherever Android wants one outside the launcher (the
-  app list in Settings, the share chooser, notifications). It matches the default
-  palette; the launcher itself gets one of the six ic_launcher_<palette> icons through
-  the activity-aliases in the manifest.
+  The launcher icon for the "sinaasappel" palette. One of six; the manifest has an
+  activity-alias per palette and KookboekApp enables the one that matches the choice.
+  Only the background colour differs between them.
 -->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
     <background android:drawable="@color/launcher_sinaasappel" />

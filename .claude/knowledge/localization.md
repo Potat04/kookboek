@@ -1,11 +1,17 @@
 # Taal
 
-De app is Nederlands en spreekt ook Engels. Nederlands staat in `res/values/strings.xml` (de
-ongekwalificeerde default), Engels in `res/values-en/strings.xml`. De twee moeten sleutel voor
-sleutel gelijk blijven.
+De app spreekt Nederlands en Engels. Engels staat in `res/values/strings.xml` — het
+ongekwalificeerde bestand, en daarmee de **fallback** — en Nederlands in
+`res/values-nl/strings.xml`. De twee moeten sleutel voor sleutel gelijk blijven.
 
-Staat de telefoon op een derde taal, dan krijg je Nederlands. Dat is de bedoeling: dit is een
-Nederlandse app met een Engelse vertaling, geen meertalig product.
+Staat de telefoon op een derde taal, dan krijg je dus **Engels**. Dat is met opzet: wie zijn
+telefoon op Duits heeft staan kan waarschijnlijk wél Engels lezen en vrijwel zeker geen Nederlands.
+Een Nederlandse telefoon krijgt gewoon `values-nl` — voor het eigenlijke publiek verandert er niets.
+
+Let op dat dit betekent dat een nieuwe string die je alleen in `values-nl` zet, voor iedereen
+buiten Nederland ontbreekt (en dan terugvalt op de sleutel in `values/`, die er dan niet is → een
+compileerfout, dus je merkt het). Zet je hem alleen in `values/`, dan zien Nederlanders Engels en
+merk je het níet. Dat is de richting waar je moet opletten.
 
 ## De keuze zelf bewaren we niet
 
@@ -51,13 +57,15 @@ ingrediënten, ook als de app op Engels staat.
 
 ## Een string toevoegen
 
-1. Zet hem in **beide** bestanden, met dezelfde sleutel.
+1. Zet hem in **beide** bestanden, met dezelfde sleutel: `values/` (Engels) én `values-nl/`.
 2. Verandert een getal de tekst, gebruik `<plurals>` — in beide talen alleen `one` en `other`.
    Let op: `quantity="zero"` vuurt nooit in nl of en, dus "nog leeg" is een aparte string.
 3. Placeholders positioneel (`%1$s`, `%2$d`) en in beide bestanden hetzelfde aantal en type. Een
    verschil daar is een `IllegalFormatException` op het toestel, niet een compileerfout.
-4. Ontbreekt een sleutel in `values-en`, dan valt Android terug op het Nederlands. Dat crasht niet,
-   het is alleen niet vertaald — en dus niet te zien in de build.
+4. Ontbreekt een sleutel in `values-nl`, dan valt Android terug op het Engels in `values/`. Dat
+   crasht niet en is niet te zien in de build — daarom is er `StringResourcesTest`, die de twee
+   bestanden op sleutels, soort, meervoudsvormen en placeholders naast elkaar legt. Vergeet je een
+   vertaling, dan faalt de test.
 
 Engels is Brits (`favourites`, `colours`) en houdt dezelfde toon als het Nederlands: nuchter, warm,
 kort, samentrekkingen waar het Nederlands spreektalig is. `Bereiding` is `Method`, niet

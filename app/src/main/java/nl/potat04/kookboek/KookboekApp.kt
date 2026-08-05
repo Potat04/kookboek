@@ -4,6 +4,8 @@ import android.app.Application
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import nl.potat04.kookboek.data.ImageStore
 import nl.potat04.kookboek.data.RecipeRepository
@@ -30,5 +32,16 @@ class KookboekApp : Application() {
         settings = SettingsStore(this)
         repository = RecipeRepository(RecipeStore(this, scope), ImageStore(this))
         scope.launch { repository.load() }
+
+        // The icon on the home screen follows the palette. Watching the flow rather than
+        // hanging this off the settings screen means it is also put right in cases the
+        // screen never sees: a restore from backup brings the preferences along while the
+        // manifest's default alias is still the enabled one.
+        scope.launch {
+            settings.settings
+                .map { it.palette }
+                .distinctUntilChanged()
+                .collect { applyLauncherIcon(it) }
+        }
     }
 }

@@ -4,10 +4,13 @@
 ./gradlew :app:testDebugUnitTest
 ```
 
-Twee testklassen, allebei zonder Android-runtime:
+Drie testklassen, allemaal zonder Android-runtime:
 
 - `RecipeParserTest` — de parser tegen echte, opgeslagen pagina's.
 - `ScalingTest` — porties omrekenen.
+- `StringResourcesTest` — `values/` (Engels, de fallback) en `values-nl/` naast elkaar: dezelfde
+  sleutels, hetzelfde soort, dezelfde meervoudsvormen, dezelfde placeholders. Die laatste is de
+  enige die écht crasht op een toestel, en geen compiler ziet hem.
 
 ## Fixtures
 
@@ -65,6 +68,17 @@ De taal omzetten zonder te tikken — dit is exact wat het instellingenscherm do
 ```bash
 adb shell cmd locale set-app-locales nl.potat04.kookboek --locales en
 ```
+
+**Geef altijd `-s` mee.** Er hangt vaak ook een echt toestel aan de USB. Valt de emulator om — dat
+gebeurt — dan kiest `adb` stilletjes het andere toestel en installeer je zonder het te merken op een
+telefoon. Zoek eerst de serial op en gebruik die overal:
+
+```bash
+adb devices; E=emulator-5554; adb -s $E shell am start -n nl.potat04.kookboek/.MainActivity
+```
+
+Ziet een screenshot er onbekend uit, of verandert de resolutie? Check `adb devices` voordat je
+verder gaat.
 
 Let op bij `adb shell input`: een `swipe` die dicht bij de onderrand begint wordt door het systeem
 als navigatiegebaar opgevat en gooit je uit de app. En een `tap` direct na `am start` of tijdens een
