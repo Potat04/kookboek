@@ -11,8 +11,8 @@ import nl.potat04.kookboek.R
  *
  * Dutch is the untagged default in `res/values/`, English lives in `res/values-en/`.
  */
-enum class AppLanguage(val tag: String, @StringRes val labelRes: Int) {
-    SYSTEM("", R.string.settings_language_system),
+enum class AppLanguage(val tag: String, @param:StringRes val labelRes: Int) {
+    SYSTEM("", R.string.settings_follow_system),
     DUTCH("nl", R.string.settings_language_dutch),
     ENGLISH("en", R.string.settings_language_english),
 }

@@ -27,11 +27,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import nl.potat04.kookboek.R
 import nl.potat04.kookboek.data.ParseQuality
 import nl.potat04.kookboek.data.Recipe
 import nl.potat04.kookboek.data.Step
+import nl.potat04.kookboek.ui.theme.controlOutline
 
 /**
  * Editing happens in plain multi-line text boxes: one ingredient or step per line.
@@ -71,7 +74,7 @@ fun EditScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onCancel) {
-                Icon(Icons.Default.Close, contentDescription = "Annuleren")
+                Icon(Icons.Default.Close, contentDescription = stringResource(R.string.action_cancel))
             }
             Spacer(Modifier.weight(1f))
             Button(
@@ -79,6 +82,7 @@ fun EditScreen(
                     val parsedIngredients = ingredients.lines()
                         .map(String::trim).filter(String::isNotEmpty)
                     val parsedSteps = textToSteps(steps)
+                    val typedServings = servings.trim().toIntOrNull()?.takeIf { it > 0 }
                     // Ticks are stored by position, so they mean nothing once the
                     // lines move. Better to lose them than to strike out the wrong line.
                     val listsChanged = parsedIngredients != original.ingredients ||
@@ -89,12 +93,18 @@ fun EditScreen(
                                 if (listsChanged) emptySet() else original.checkedIngredients,
                             checkedSteps =
                                 if (listsChanged) emptySet() else original.checkedSteps,
-                            title = title.trim().ifBlank { "Naamloos recept" },
+                            title = title.trim(),
                             totalMinutes = minutes.trim().toIntOrNull()?.takeIf { it > 0 },
-                            servings = servings.trim().toIntOrNull()?.takeIf { it > 0 },
-                            servingsLabel = servings.trim().toIntOrNull()?.let {
-                                if (it == 1) "1 portie" else "$it porties"
-                            } ?: original.servingsLabel,
+                            servings = typedServings,
+                            // Changing the number makes the site's own wording stale
+                            // ("15 stuks" next to a 4), so it goes and the screen phrases
+                            // the number in whichever language is set. Comparing against
+                            // the original matters: the field starts out pre-filled from
+                            // it, so "parses as a number" would be true the instant the
+                            // editor opens and any save at all would throw the wording
+                            // away — and it is not stored anywhere else.
+                            servingsLabel = if (typedServings != original.servings) null
+                            else original.servingsLabel,
                             ingredients = parsedIngredients,
                             steps = parsedSteps,
                             notes = notes,
@@ -107,22 +117,27 @@ fun EditScreen(
                     )
                 },
                 enabled = title.isNotBlank(),
-            ) { Text("Bewaren") }
+            ) { Text(stringResource(R.string.action_save)) }
         }
 
         Spacer(Modifier.height(6.dp))
         Text(
-            if (isNew) "Nieuw recept" else "Recept bewerken",
+            stringResource(if (isNew) R.string.edit_new_title else R.string.edit_title),
             style = MaterialTheme.typography.displaySmall,
         )
         Spacer(Modifier.height(20.dp))
 
-        Field("Titel", title, { title = it }, singleLine = true)
+        Field(
+            label = stringResource(R.string.edit_field_title),
+            value = title,
+            onValue = { title = it },
+            singleLine = true,
+        )
         Spacer(Modifier.height(14.dp))
 
         Row {
             Field(
-                label = "Minuten",
+                label = stringResource(R.string.edit_field_minutes),
                 value = minutes,
                 onValue = { minutes = it.filter(Char::isDigit).take(4) },
                 singleLine = true,
@@ -131,7 +146,7 @@ fun EditScreen(
             )
             Spacer(Modifier.width(12.dp))
             Field(
-                label = "Porties",
+                label = stringResource(R.string.recipe_servings),
                 value = servings,
                 onValue = { servings = it.filter(Char::isDigit).take(3) },
                 singleLine = true,
@@ -142,7 +157,7 @@ fun EditScreen(
         Spacer(Modifier.height(14.dp))
 
         Field(
-            label = "Ingrediënten — één per regel",
+            label = stringResource(R.string.edit_field_ingredients),
             value = ingredients,
             onValue = { ingredients = it },
             minLines = 6,
@@ -150,14 +165,19 @@ fun EditScreen(
         Spacer(Modifier.height(14.dp))
 
         Field(
-            label = "Stappen — één per regel, '# kopje' maakt een tussenkop",
+            label = stringResource(R.string.edit_field_steps),
             value = steps,
             onValue = { steps = it },
             minLines = 8,
         )
         Spacer(Modifier.height(14.dp))
 
-        Field("Notities", notes, { notes = it }, minLines = 3)
+        Field(
+            label = stringResource(R.string.recipe_notes),
+            value = notes,
+            onValue = { notes = it },
+            minLines = 3,
+        )
     }
 }
 
@@ -183,7 +203,7 @@ private fun Field(
         textStyle = MaterialTheme.typography.bodyMedium,
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = MaterialTheme.colorScheme.primary,
-            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+            unfocusedBorderColor = MaterialTheme.colorScheme.controlOutline,
         ),
         modifier = modifier.fillMaxWidth(),
     )

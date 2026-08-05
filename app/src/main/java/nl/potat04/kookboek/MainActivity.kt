@@ -19,6 +19,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -28,14 +29,19 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import nl.potat04.kookboek.data.Recipe
+import nl.potat04.kookboek.data.SettingsStore
 import nl.potat04.kookboek.ui.AddRecipeSheet
 import nl.potat04.kookboek.ui.EditScreen
 import nl.potat04.kookboek.ui.KookboekViewModel
 import nl.potat04.kookboek.ui.LibraryScreen
 import nl.potat04.kookboek.ui.ProvideImageStore
 import nl.potat04.kookboek.ui.RecipeScreen
+import nl.potat04.kookboek.ui.SettingsScreen
+import nl.potat04.kookboek.ui.resolve
+import nl.potat04.kookboek.ui.setAppLanguage
 import nl.potat04.kookboek.ui.theme.KookboekTheme
 import nl.potat04.kookboek.ui.theme.PaperBackground
+import nl.potat04.kookboek.ui.theme.paintWindowFor
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -45,11 +51,14 @@ class MainActivity : ComponentActivity() {
         // Consume it: on a rotation the activity is rebuilt, and re-navigating would
         // yank the user back to this recipe after they had walked away from it.
         intent?.removeExtra(ShareActivity.EXTRA_OPEN_RECIPE)
+        val store = (application as KookboekApp).settings
+        paintWindowFor(store.settings.value)
         setContent {
-            KookboekTheme {
+            val settings by store.settings.collectAsStateWithLifecycle()
+            KookboekTheme(settings = settings) {
                 val vm: KookboekViewModel = viewModel(factory = KookboekViewModel.Factory)
                 ProvideImageStore(vm.images) {
-                    PaperBackground { Kookboek(vm, openRecipe) }
+                    PaperBackground { Kookboek(vm, store, openRecipe) }
                 }
             }
         }
@@ -57,20 +66,21 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun Kookboek(vm: KookboekViewModel, openRecipe: String?) {
+private fun Kookboek(vm: KookboekViewModel, store: SettingsStore, openRecipe: String?) {
     val nav = rememberNavController()
     val snackbars = remember { SnackbarHostState() }
+    val context = LocalContext.current
 
     // Arrived here from the share sheet's "Openen" button.
     LaunchedEffect(openRecipe) {
         if (openRecipe != null) nav.navigate("recipe/$openRecipe")
     }
 
-    LaunchedEffect(vm) {
+    LaunchedEffect(vm, context) {
         vm.messages.collect { toast ->
             val result = snackbars.showSnackbar(
-                message = toast.message,
-                actionLabel = toast.actionLabel,
+                message = toast.message.resolve(context),
+                actionLabel = toast.actionLabel?.resolve(context),
                 withDismissAction = toast.actionLabel == null,
             )
             if (result == SnackbarResult.ActionPerformed) toast.undo?.invoke()
@@ -83,7 +93,7 @@ private fun Kookboek(vm: KookboekViewModel, openRecipe: String?) {
         contentColor = MaterialTheme.colorScheme.onBackground,
         modifier = Modifier.fillMaxSize(),
     ) { padding ->
-        KookboekNavHost(nav, vm, padding)
+        KookboekNavHost(nav, vm, store, padding)
     }
 }
 
@@ -91,6 +101,7 @@ private fun Kookboek(vm: KookboekViewModel, openRecipe: String?) {
 private fun KookboekNavHost(
     nav: NavHostController,
     vm: KookboekViewModel,
+    store: SettingsStore,
     padding: PaddingValues,
 ) {
     val all by vm.all.collectAsStateWithLifecycle()
@@ -119,6 +130,7 @@ private fun KookboekNavHost(
                 onSort = vm::setSort,
                 onOpen = { nav.navigate("recipe/${it.id}") },
                 onAdd = { addOpen = true },
+                onSettings = { nav.navigate("settings") },
                 contentPadding = padding,
             )
 
@@ -164,6 +176,22 @@ private fun KookboekNavHost(
                     contentPadding = padding,
                 )
             }
+        }
+
+        composable("settings") {
+            val settings by store.settings.collectAsStateWithLifecycle()
+            val context = LocalContext.current
+            SettingsScreen(
+                settings = settings,
+                onPalette = store::setPalette,
+                onMode = store::setMode,
+                onTextSize = store::setTextSize,
+                // Handing the language to the platform restarts this activity; the
+                // navigation back stack is restored, so we come back here.
+                onLanguage = context::setAppLanguage,
+                onBack = { nav.popBackStack() },
+                contentPadding = padding,
+            )
         }
 
         composable("edit/{id}") { entry ->

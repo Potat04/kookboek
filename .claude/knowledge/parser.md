@@ -36,11 +36,19 @@ echt aangetroffen en wordt afgevangen:
 - Nummering die de site zelf al in de stap heeft gezet (`"1. Snijd de ui"`) — die gaat eruit,
   want de app nummert zelf.
 
-## Nederlands eruit
+## De porties-tekst
 
-`localizeYield()` maakt van "4 persons" en "Serves 6" gewoon "4 porties" en "6 porties". Alles wat
-specifieker is dan een portie-aantal ("15 stuks", "1 loaf", "24 koekjes") blijft staan — dat is
-informatie die je niet moet weggooien.
+`descriptiveYield()` houdt alleen wat méér zegt dan een getal: "15 stuks", "1 loaf", "24 koekjes"
+— dat is informatie die je niet moet weggooien. Een kale portie-telling ("4 persons", "Serves 6",
+"4 porties") wordt weggegooid; het getal staat al in `servings` en het scherm verwoordt het in de
+taal die aan staat.
+
+Dit deed vroeger het omgekeerde: `localizeYield()` herschreef "4 servings" naar "4 porties" vóór
+het opslaan. Prima toen de app alleen Nederlands sprak, maar het zette één taal vast in de database
+voor de hele levensduur van het recept. Zie [localization.md](localization.md).
+
+Er staat sowieso geen Nederlands meer in deze laag: `urlTitle()` geeft een lege titel terug in
+plaats van `"Recept"`, en het scherm vult "Naamloos recept" in.
 
 ## Iets aanpassen
 

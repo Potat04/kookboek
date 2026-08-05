@@ -15,8 +15,8 @@ import androidx.compose.ui.platform.LocalContext
  * sentences back into layers that have no business holding them.
  */
 sealed interface UiText {
-    data class Res(@StringRes val id: Int, val args: List<Any> = emptyList()) : UiText
-    data class Quantity(@PluralsRes val id: Int, val count: Int) : UiText
+    data class Res(@param:StringRes val id: Int, val args: List<Any> = emptyList()) : UiText
+    data class Quantity(@param:PluralsRes val id: Int, val count: Int) : UiText
     data class Joined(val parts: List<UiText>, val separator: String = ", ") : UiText
     /** Text that comes from the recipe itself — a title, a site name — and is never translated. */
     data class Raw(val text: String) : UiText

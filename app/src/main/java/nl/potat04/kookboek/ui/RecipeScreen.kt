@@ -10,6 +10,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -19,6 +21,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
@@ -55,14 +58,22 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
+import nl.potat04.kookboek.R
 import nl.potat04.kookboek.data.ParseQuality
 import nl.potat04.kookboek.data.Recipe
 import nl.potat04.kookboek.parse.Scaling
+import nl.potat04.kookboek.ui.theme.controlOutline
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun RecipeScreen(
     recipe: Recipe,
@@ -123,7 +134,7 @@ fun RecipeScreen(
         }
 
         item {
-            Text(recipe.title, style = MaterialTheme.typography.displaySmall)
+            Text(recipe.displayTitle(), style = MaterialTheme.typography.displaySmall)
             Spacer(Modifier.height(8.dp))
             // Sites that publish themselves as the author give "24Kitchen · 24Kitchen".
             val byline = listOfNotNull(recipe.author, recipe.siteName)
@@ -140,18 +151,30 @@ fun RecipeScreen(
                 Spacer(Modifier.height(12.dp))
                 Text(
                     recipe.description,
-                    style = MaterialTheme.typography.bodyMedium,
+                    // The blurb the site opens with. It used to be 15sp muted italic
+                    // sans, which is the hardest thing to read on the whole screen —
+                    // a paragraph you actually read deserves reading size and full
+                    // ink. The serif italic keeps it apart from the steps without
+                    // making it faint.
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontFamily = FontFamily.Serif,
                     fontStyle = FontStyle.Italic,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
             }
             Spacer(Modifier.height(14.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                recipe.timeLabel()?.let { Tag(it) }
-                // Scale the yield along with the ingredients, or "15 stuks" would
-                // sit there contradicting a stepper that says 17.
-                recipe.servingsLabelOrNull()
-                    ?.let { if (factor == 1.0) it else Scaling.scale(it, factor) }
+            // Flows onto a second line rather than squeezing: a site tag like
+            // "Aziatische recepten" is long, and at the larger text sizes four tags no
+            // longer fit across a phone.
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                recipe.timeText()?.let { Tag(it) }
+                // Scale the yield along with the ingredients, or "15 stuks" would sit
+                // there contradicting a stepper that says 17. The count goes in too, so
+                // that the plural agrees with the number actually shown.
+                recipe.servingsText(count = servings ?: recipe.servings, factor = factor)
                     ?.let { Tag(it) }
                 recipe.tags.take(2).forEach { Tag(it) }
             }
@@ -173,9 +196,9 @@ fun RecipeScreen(
         if (recipe.ingredients.isNotEmpty()) {
             item {
                 SectionHeader(
-                    title = "Ingrediënten",
+                    title = stringResource(R.string.recipe_ingredients),
                     action = if (recipe.checkedIngredients.isNotEmpty() || recipe.checkedSteps.isNotEmpty())
-                        "Vinkjes wissen" to onClearChecks else null,
+                        stringResource(R.string.recipe_clear_checks) to onClearChecks else null,
                 )
                 if (recipe.servings != null && recipe.servings > 0) {
                     ServingsStepper(
@@ -197,7 +220,7 @@ fun RecipeScreen(
         }
 
         if (recipe.steps.isNotEmpty()) {
-            item { SectionHeader("Bereiding") }
+            item { SectionHeader(stringResource(R.string.recipe_method)) }
             itemsIndexed(recipe.steps) { index, step ->
                 val previous = recipe.steps.getOrNull(index - 1)?.section
                 if (step.section != null && step.section != previous) {
@@ -220,12 +243,14 @@ fun RecipeScreen(
         }
 
         item {
-            SectionHeader("Notities")
+            SectionHeader(stringResource(R.string.recipe_notes))
             NotesField(recipe.notes, onNotes)
             Spacer(Modifier.height(24.dp))
             recipe.sourceUrl?.let { url ->
+                val where = recipe.siteName
+                    ?: stringResource(R.string.recipe_view_original_generic)
                 TextButton(onClick = { context.openLink(url) }) {
-                    Text("Bekijk origineel op ${recipe.siteName ?: "de site"}")
+                    Text(stringResource(R.string.recipe_view_original, where))
                 }
             }
         }
@@ -234,13 +259,24 @@ fun RecipeScreen(
     if (confirmDelete) {
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
-            title = { Text("Recept verwijderen?", style = MaterialTheme.typography.titleLarge) },
-            text = { Text("'${recipe.title}' gaat uit je kookboek. Je kunt dit direct daarna ongedaan maken.") },
+            title = {
+                Text(
+                    stringResource(R.string.recipe_delete_title),
+                    style = MaterialTheme.typography.titleLarge,
+                )
+            },
+            text = {
+                Text(stringResource(R.string.recipe_delete_body, recipe.displayTitle()))
+            },
             confirmButton = {
-                TextButton(onClick = { confirmDelete = false; onDelete() }) { Text("Verwijderen") }
+                TextButton(onClick = { confirmDelete = false; onDelete() }) {
+                    Text(stringResource(R.string.action_delete))
+                }
             },
             dismissButton = {
-                TextButton(onClick = { confirmDelete = false }) { Text("Annuleren") }
+                TextButton(onClick = { confirmDelete = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
             },
             containerColor = MaterialTheme.colorScheme.surface,
         )
@@ -264,36 +300,49 @@ private fun DetailBar(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         IconButton(onClick = onBack) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Terug")
+            Icon(
+                Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = stringResource(R.string.action_back),
+            )
         }
         Spacer(Modifier.weight(1f))
         IconButton(onClick = onToggleFavourite) {
             Icon(
                 if (recipe.favorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                contentDescription = if (recipe.favorite) "Uit favorieten" else "Favoriet maken",
+                contentDescription = stringResource(
+                    if (recipe.favorite) R.string.recipe_favourite_remove
+                    else R.string.recipe_favourite_add
+                ),
                 tint = if (recipe.favorite) MaterialTheme.colorScheme.primary
                 else MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         IconButton(onClick = onEdit) {
-            Icon(Icons.Default.Edit, contentDescription = "Bewerken")
+            Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.action_edit))
         }
         var menu by remember { mutableStateOf(false) }
         Box {
             IconButton(onClick = { menu = true }) {
-                Icon(Icons.Default.MoreVert, contentDescription = "Meer")
+                Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.action_more))
             }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                 if (recipe.sourceUrl != null) {
                     DropdownMenuItem(
-                        text = { Text(if (busy) "Bezig met ophalen…" else "Opnieuw ophalen") },
+                        text = {
+                            Text(
+                                stringResource(
+                                    if (busy) R.string.recipe_refreshing
+                                    else R.string.recipe_refresh
+                                )
+                            )
+                        },
                         enabled = !busy,
                         leadingIcon = { Icon(Icons.Default.Refresh, contentDescription = null) },
                         onClick = { menu = false; onRefresh() },
                     )
                 }
                 DropdownMenuItem(
-                    text = { Text("Verwijderen") },
+                    text = { Text(stringResource(R.string.action_delete)) },
                     leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
                     onClick = { menu = false; onDelete() },
                 )
@@ -332,32 +381,46 @@ private fun ServingsStepper(base: Int, current: Int, onChange: (Int) -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f)) {
-                Text("Porties", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    stringResource(R.string.recipe_servings),
+                    style = MaterialTheme.typography.titleMedium,
+                )
                 if (current != base) {
                     Text(
-                        "omgerekend vanaf $base",
-                        style = MaterialTheme.typography.labelSmall,
+                        stringResource(R.string.recipe_servings_from, base),
+                        style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
+            val fewer = stringResource(R.string.recipe_servings_fewer)
             IconButton(
                 onClick = { onChange((current - 1).coerceAtLeast(1)) },
                 enabled = current > 1,
+                // The glyph is a typographic minus, which a screen reader reads as
+                // nothing at all — the label has to come from somewhere.
+                modifier = Modifier.semantics { contentDescription = fewer },
             ) {
                 Text("–", style = MaterialTheme.typography.headlineSmall)
             }
             Text(
                 "$current",
                 style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.width(28.dp),
+                // A minimum, not a width: 28dp holds two digits at the normal text size
+                // but not at "Extra groot", and the text size multiplies with the
+                // system font scale on top of that.
+                modifier = Modifier.widthIn(min = 28.dp),
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             )
             IconButton(
                 onClick = { onChange((current + 1).coerceAtMost(99)) },
                 enabled = current < 99,
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Meer porties", Modifier.size(18.dp))
+                Icon(
+                    Icons.Default.Add,
+                    contentDescription = stringResource(R.string.recipe_servings_more),
+                    modifier = Modifier.size(18.dp),
+                )
             }
         }
     }
@@ -377,7 +440,10 @@ private fun CheckLine(text: String, checked: Boolean, onToggle: () -> Unit) {
             onCheckedChange = { onToggle() },
             colors = CheckboxDefaults.colors(
                 checkedColor = MaterialTheme.colorScheme.primary,
-                uncheckedColor = MaterialTheme.colorScheme.outline,
+                // An empty tick box is a control you have to find with a wet hand, so
+                // it gets the muted ink rather than the hairline that edges the cards.
+                // The printed rule is deliberately quiet; this must not be.
+                uncheckedColor = MaterialTheme.colorScheme.onSurfaceVariant,
             ),
         )
         Text(
@@ -399,16 +465,25 @@ private fun StepRow(number: Int, text: String, done: Boolean, onToggle: () -> Un
             .clickable(onClick = onToggle)
             .padding(vertical = 9.dp),
     ) {
+        // The badge is sized from the number inside it rather than pinned at 28dp, so it
+        // stays a circle around the digits at every text size.
+        val badge = with(LocalDensity.current) {
+            (MaterialTheme.typography.titleMedium.fontSize.toDp() * 1.75f)
+                .coerceAtLeast(28.dp)
+        }
         Box(
             Modifier
-                .size(28.dp)
+                .size(badge)
                 .background(
                     if (done) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
                     CircleShape,
                 )
                 .border(
                     1.dp,
-                    if (done) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                    if (done) MaterialTheme.colorScheme.primary
+                    // Not the card hairline: an empty circle is the only thing saying
+                    // this step is still to do.
+                    else MaterialTheme.colorScheme.controlOutline,
                     CircleShape,
                 ),
             contentAlignment = Alignment.Center,
@@ -448,13 +523,13 @@ private fun NotesField(notes: String, onNotes: (String) -> Unit) {
     OutlinedTextField(
         value = draft,
         onValueChange = { draft = it },
-        placeholder = { Text("Wat je de volgende keer anders doet…") },
+        placeholder = { Text(stringResource(R.string.recipe_notes_hint)) },
         minLines = 3,
         shape = MaterialTheme.shapes.small,
         textStyle = MaterialTheme.typography.bodyMedium,
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = MaterialTheme.colorScheme.primary,
-            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+            unfocusedBorderColor = MaterialTheme.colorScheme.controlOutline,
         ),
         modifier = Modifier.fillMaxWidth(),
     )
@@ -475,20 +550,31 @@ private fun CouldNotRead(
             .border(1.dp, MaterialTheme.colorScheme.outline, MaterialTheme.shapes.small),
     ) {
         Column(Modifier.padding(16.dp)) {
-            Text("Het recept zelf kwam er niet uit", style = MaterialTheme.typography.titleLarge)
+            Text(
+                stringResource(R.string.recipe_unread_title),
+                style = MaterialTheme.typography.titleLarge,
+            )
             Spacer(Modifier.height(6.dp))
             Text(
-                "Deze pagina publiceert geen leesbaar recept — de link is wel bewaard.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                stringResource(R.string.recipe_unread_body),
+                // This is the screen admitting it failed. Reading it should not be
+                // the second failure.
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface,
             )
             Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 if (hasSource) {
-                    TextButton(onClick = onOpen) { Text("Open origineel") }
-                    TextButton(onClick = onRetry) { Text("Opnieuw") }
+                    TextButton(onClick = onOpen) {
+                        Text(stringResource(R.string.recipe_unread_open))
+                    }
+                    TextButton(onClick = onRetry) {
+                        Text(stringResource(R.string.recipe_unread_retry))
+                    }
                 }
-                TextButton(onClick = onWrite) { Text("Zelf invullen") }
+                TextButton(onClick = onWrite) {
+                    Text(stringResource(R.string.recipe_unread_write))
+                }
             }
         }
     }

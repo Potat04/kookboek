@@ -9,6 +9,8 @@ import nl.potat04.kookboek.data.FailureReason
 import nl.potat04.kookboek.data.Recipe
 import nl.potat04.kookboek.data.TextSize
 import nl.potat04.kookboek.data.ThemeMode
+import nl.potat04.kookboek.parse.RecipeParser
+import nl.potat04.kookboek.parse.Scaling
 
 /**
  * The place where stored data turns into a sentence in the reader's language.
@@ -33,10 +35,23 @@ fun Recipe.timeText(): String? {
  * The site's own wording wins — "15 stuks" says more than "4 porties" ever will, and
  * it is what the page actually promised. Only when there is no such text do we phrase
  * the number ourselves, and then it follows the app language.
+ *
+ * The stored label goes through [RecipeParser.descriptiveYield] on the way out, not
+ * just on the way in. Recipes saved by an earlier version have "4 porties" sitting in
+ * the database, from back when the parser wrote that; recognising it as a plain count
+ * here means those recipes say "4 servings" in English too, without a migration.
+ *
+ * Both the [count] and the [factor] belong here rather than at the call site. The
+ * servings stepper changes what is on screen, and the two branches have to react to it
+ * differently: the site's own words can only be rewritten as text, one number at a
+ * time, while the plural resource needs the count itself to pick between "portie" and
+ * "porties". Scaling a finished plural would give "1 porties".
  */
 @Composable
-fun Recipe.servingsText(): String? = servingsLabel
-    ?: servings?.let { pluralStringResource(R.plurals.recipe_servings_count, it, it) }
+fun Recipe.servingsText(count: Int? = servings, factor: Double = 1.0): String? =
+    RecipeParser.descriptiveYield(servingsLabel)
+        ?.let { if (factor == 1.0) it else Scaling.scale(it, factor) }
+        ?: count?.let { pluralStringResource(R.plurals.recipe_servings_count, it, it) }
 
 /** A recipe whose page gave no title at all still needs something on the card. */
 @Composable

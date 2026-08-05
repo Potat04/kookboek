@@ -21,7 +21,7 @@ import nl.potat04.kookboek.data.ImportResult
 import nl.potat04.kookboek.data.Recipe
 import nl.potat04.kookboek.data.RecipeRepository
 
-enum class SortOrder(@StringRes val labelRes: Int) {
+enum class SortOrder(@param:StringRes val labelRes: Int) {
     NEWEST(R.string.sort_newest),
     TITLE(R.string.sort_title),
     QUICKEST(R.string.sort_quickest),
@@ -166,7 +166,7 @@ class KookboekViewModel(private val repo: RecipeRepository) : ViewModel() {
             )
         )
         recipe.hasContent -> UiText.Res(R.string.toast_partial)
-        else -> UiText.Res(R.string.toast_link_only)
+        else -> UiText.Res(R.string.share_summary_link_only)
     }
 
     /** Pages that gave no title at all still have to be named in a snackbar. */

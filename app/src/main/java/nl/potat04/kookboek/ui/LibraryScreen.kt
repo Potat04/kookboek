@@ -56,6 +56,7 @@ import androidx.compose.ui.unit.dp
 import nl.potat04.kookboek.R
 import nl.potat04.kookboek.data.ParseQuality
 import nl.potat04.kookboek.data.Recipe
+import nl.potat04.kookboek.ui.theme.controlOutline
 
 @Composable
 fun LibraryScreen(
@@ -143,7 +144,7 @@ private fun Masthead(count: Int, onSettings: () -> Unit) {
         IconButton(onClick = onSettings) {
             Icon(
                 Icons.Default.Settings,
-                contentDescription = stringResource(R.string.library_settings),
+                contentDescription = stringResource(R.string.settings_title),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
@@ -182,7 +183,7 @@ private fun SearchField(query: String, onQuery: (String) -> Unit) {
         shape = MaterialTheme.shapes.small,
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = MaterialTheme.colorScheme.primary,
-            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+            unfocusedBorderColor = MaterialTheme.colorScheme.controlOutline,
             focusedContainerColor = MaterialTheme.colorScheme.surface,
             unfocusedContainerColor = MaterialTheme.colorScheme.surface,
         ),
@@ -217,7 +218,10 @@ private fun FilterRow(
             colors = FilterChipDefaults.filterChipColors(
                 selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
                 selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                selectedLeadingIconColor = MaterialTheme.colorScheme.primary,
+                // Not primary: the accent is tuned to sit on paper, and on its own
+                // container it is the faintest pairing in the palette. The heart
+                // matches the word beside it instead.
+                selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
             ),
         )
 
@@ -266,10 +270,12 @@ private fun RecipeCard(recipe: Recipe, onClick: () -> Unit) {
                 Spacer(Modifier.height(5.dp))
                 Text(
                     text = cardMeta(recipe),
-                    // bodyMedium rather than bodySmall: this line is the only thing
-                    // that distinguishes two pasta recipes from each other, and it was
-                    // the first thing to disappear when reading at arm's length.
-                    style = MaterialTheme.typography.bodyMedium,
+                    // bodySmall, which is now 14sp rather than 13sp, and carried by a
+                    // muted ink that reaches 9:1 instead of 5.6:1. Going a step further
+                    // to bodyMedium was tried and reverted: it pushed "15 stuks" past
+                    // the single line and truncated the yield away, and 16sp sans next
+                    // to a 19sp serif title flattens the two into one voice.
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -314,19 +320,20 @@ private fun EmptyLibrary() {
             modifier = Modifier.size(76.dp),
         )
         Spacer(Modifier.height(20.dp))
-        Text("Nog een leeg kookboek", style = MaterialTheme.typography.headlineMedium)
+        Text(
+            stringResource(R.string.library_empty_title),
+            style = MaterialTheme.typography.headlineMedium,
+        )
         Spacer(Modifier.height(10.dp))
         Text(
-            "Vind een recept in je browser, tik op Delen en kies Kookboek. " +
-                "De app leest het recept van de pagina en bewaart het hier — " +
-                "ook als de site later offline gaat.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            stringResource(R.string.library_empty_body),
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface,
         )
         Spacer(Modifier.height(16.dp))
         Text(
-            "Of tik op Toevoegen om een link te plakken of zelf een recept te schrijven.",
-            style = MaterialTheme.typography.bodySmall,
+            stringResource(R.string.library_empty_hint),
+            style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
@@ -342,13 +349,15 @@ private fun NoMatches(favouritesOnly: Boolean) {
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
-                if (favouritesOnly) "Geen favorieten die hierop passen"
-                else "Niets gevonden",
+                stringResource(
+                    if (favouritesOnly) R.string.library_no_matches_favourites
+                    else R.string.library_no_matches
+                ),
                 style = MaterialTheme.typography.headlineSmall,
             )
             Spacer(Modifier.height(6.dp))
             Text(
-                "Probeer een ander woord, of zoek op een ingrediënt.",
+                stringResource(R.string.library_no_matches_body),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -356,20 +365,25 @@ private fun NoMatches(favouritesOnly: Boolean) {
     }
 }
 
-/** Small rounded tag used on the detail screen. */
+/**
+ * Small rounded tag used on the detail screen.
+ *
+ * It carries the time and the yield, which are two of the three things you check
+ * before you start cooking — so it gets a hairline of its own and a size you can
+ * read, instead of the 11sp whisper it used to be.
+ */
 @Composable
 fun Tag(text: String, modifier: Modifier = Modifier) {
+    val shape = RoundedCornerShape(4.dp)
     Box(
         modifier
-            .background(
-                MaterialTheme.colorScheme.surfaceContainerHigh,
-                RoundedCornerShape(4.dp),
-            )
-            .padding(horizontal = 8.dp, vertical = 4.dp),
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh, shape)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, shape)
+            .padding(horizontal = 9.dp, vertical = 5.dp),
     ) {
         Text(
             text,
-            style = MaterialTheme.typography.labelSmall,
+            style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }

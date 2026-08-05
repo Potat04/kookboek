@@ -29,6 +29,18 @@ tekens gingen stuk bij het kopiëren.
 **`List` heeft al `component1()` t/m `component5()`.** Zelf een `component4()` schrijven voor
 destructuring geeft een redeclaratie-conflict.
 
+**Een `onClick`-parameter is geen `clickable`.** De palet-swatches op het instellingenscherm kregen
+netjes een `onClick` doorgegeven die nergens aan een modifier hing. Het compileert, het ziet er goed
+uit, en zes van de vier keuzes doen niets. Alleen zichtbaar door de app echt aan te tikken — geen
+test en geen review vond dit. Gebruik `selectable(selected, onClick)` voor één keuze uit een groep,
+dan staat de semantiek er ook goed in.
+
+**De parser bakte Nederlands in de database.** `localizeYield()` herschreef "4 servings" actief naar
+"4 porties" vóór het opslaan, en `urlTitle()` had `"Recept"` als fallbacktitel. Prima toen de app
+alleen Nederlands sprak; met een taalkeuze las een Engelse gebruiker "4 porties" op zijn eigen
+recept. Zulke plekken zitten niet in de UI-laag, dus grep bij taalwerk óók door `parse/` en `data/`.
+De tests legden het oude gedrag vast, dus die moesten mee.
+
 ## Deze machine
 
 - **Python heeft geen werkende CA-bundle.** `urllib` valt over "certificate has expired" bij
@@ -39,6 +51,27 @@ destructuring geeft een redeclaratie-conflict.
 - **Er is één AVD: `kookboek`** (Android 36). Zie [testing.md](testing.md).
 - **`ah.nl` blokkeert scrapers.** De opgeslagen fixture is een botblokkade-pagina en dient als
   test dat de app daar netjes mee omgaat in plaats van te crashen.
+
+## Kleur en contrast
+
+**Één kleur droeg élke samenvatting.** `InkMuted` hing aan zowel `onSurfaceVariant` als `secondary`
+en kwam op licht papier niet boven 5.6:1 — en stond juist op de kleinste maten met de breedste
+letterspatiëring. Contrast en formaat faalden op dezelfde plekken, en dat leest als "vaag" in plaats
+van als "te klein" of "te licht". Als iemand zegt dat tekst slecht leesbaar is: kijk eerst welke
+rol die tekst draagt en waar diezelfde rol nog meer opduikt.
+
+**`tonalElevation` verft je kaart richting het accent.** Material tint een verhoogd `Surface` naar
+`surfaceTint` (standaard `primary`). De deel-sheet stond op `tonalElevation = 3.dp` met
+`color = surface`, dus die kaart was in werkelijkheid `#F9EEE4` en élke ratio erin lag een half punt
+lager dan je op papier berekent. Reken tegen de echte kleur, of laat `tonalElevation` weg.
+
+**De papierkorrel drukt het contrast plaatselijk omlaag.** `Paper.kt` legt vlekjes tot alpha 30/255
+neer; onder de donkerste zakt lichte `background` naar ongeveer `#E6E1D7`. Krappe gevallen moet je
+daartegen narekenen, niet tegen de vlakke achtergrondkleur.
+
+**Eén `outline` kan geen kaart én geen tekstveld zijn.** Een gedrukte haarlijn wil flauw zijn
+(~2:1); de rand van een besturingselement wil 3:1. Dat is niet één kleur. Zie
+`ColorScheme.controlOutline` in [ui.md](ui.md).
 
 ## UX-bugs die al eens gemeld zijn
 

@@ -1,8 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Kept in sync with ui/theme/Color.kt so the window never flashes a wrong background. -->
+    <!--
+      Only the starting window uses these: the paper of the DEFAULT palette (Sinaasappel,
+      in ui/theme/Palettes.kt), light and dark. They exist because the system picks a
+      window background before any app code runs, and it can only pick one. As soon as
+      the activity starts, Activity.paintWindowFor() repaints it in the chosen palette.
+      Keep them in step with SinaasappelLight/Dark's `background`.
+    -->
     <color name="paper">#F6F1E6</color>
-    <color name="paper_dark">#14120F</color>
-    <color name="ink">#1E1A16</color>
-    <color name="terracotta">#B4522A</color>
+    <color name="paper_dark">#15130F</color>
 </resources>

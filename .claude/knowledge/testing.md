@@ -60,6 +60,21 @@ Screenshot om te zien wat er staat:
 adb exec-out screencap -p > screen.png
 ```
 
+De taal omzetten zonder te tikken — dit is exact wat het instellingenscherm doet:
+
+```bash
+adb shell cmd locale set-app-locales nl.potat04.kookboek --locales en
+```
+
+Let op bij `adb shell input`: een `swipe` die dicht bij de onderrand begint wordt door het systeem
+als navigatiegebaar opgevat en gooit je uit de app. En een `tap` direct na `am start` of tijdens een
+navigatie-animatie landt op het verkeerde scherm — maak eerst een screenshot om te zien waar je
+bent. Dat de paletkeuzes niet aanklikbaar waren, is precies zo aan het licht gekomen.
+
+De instellingen staan in SharedPreferences en overleven `adb install -r`. Wil je een schone start
+zonder je recepten te verliezen, zet ze dan terug via het instellingenscherm — `pm clear` gooit ook
+de recepten weg.
+
 Draait de release-build met R8 aan, test dan de **release-APK** en niet alleen debug — een
 kapotte keep-rule merk je pas als de app na minificatie crasht. Zie [release.md](release.md).
 

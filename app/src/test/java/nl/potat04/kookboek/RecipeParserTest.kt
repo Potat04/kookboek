@@ -6,6 +6,7 @@ import nl.potat04.kookboek.parse.ParsedRecipe
 import nl.potat04.kookboek.parse.RecipeParser
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -53,15 +54,26 @@ class RecipeParserTest {
     }
 
     @Test
-    fun `english yields are said in dutch`() {
-        assertEquals("4 porties", RecipeParser.localizeYield("4 persons"))
-        assertEquals("2 porties", RecipeParser.localizeYield("2 servings"))
-        assertEquals("1 portie", RecipeParser.localizeYield("1 serving"))
-        assertEquals("6 porties", RecipeParser.localizeYield("Serves 6"))
-        // Anything more specific than a serving count carries information — leave it.
-        assertEquals("15 stuks", RecipeParser.localizeYield("15 stuks"))
-        assertEquals("1 loaf", RecipeParser.localizeYield("1 loaf"))
-        assertEquals("24 koekjes", RecipeParser.localizeYield("24 koekjes"))
+    fun `a plain serving count is left to the screen to word`() {
+        // The number is kept in `servings`; the label would only freeze one language
+        // into the database. In either language, and either way round.
+        assertNull(RecipeParser.descriptiveYield("4 persons"))
+        assertNull(RecipeParser.descriptiveYield("2 servings"))
+        assertNull(RecipeParser.descriptiveYield("1 serving"))
+        assertNull(RecipeParser.descriptiveYield("Serves 6"))
+        assertNull(RecipeParser.descriptiveYield("4 porties"))
+        assertNull(RecipeParser.descriptiveYield("2 personen"))
+        assertNull(RecipeParser.descriptiveYield("voor 4"))
+        // A bare number says nothing the count does not.
+        assertNull(RecipeParser.descriptiveYield("4"))
+        assertNull(RecipeParser.descriptiveYield(null))
+        assertNull(RecipeParser.descriptiveYield("  "))
+        // Anything more specific than a serving count carries information — keep it,
+        // in the site's own words.
+        assertEquals("15 stuks", RecipeParser.descriptiveYield("15 stuks"))
+        assertEquals("1 loaf", RecipeParser.descriptiveYield("1 loaf"))
+        assertEquals("24 koekjes", RecipeParser.descriptiveYield("24 koekjes"))
+        assertEquals("2 jars", RecipeParser.descriptiveYield("2 jars"))
     }
 
     @Test
@@ -82,7 +94,8 @@ class RecipeParserTest {
         assertEquals("Easy classic lasagne", r.title)
         assertEquals(75, r.totalMinutes)
         assertEquals(6, r.servings)
-        assertEquals("6 porties", r.servingsLabel)
+        // "Serves 6" is a plain count, so no wording is stored — the screen says it.
+        assertNull(r.servingsLabel)
         assertEquals(5, r.steps.size)
         assertTrue(r.imageUrl!!.startsWith("https://"))
         assertTrue(r.tags.isNotEmpty())

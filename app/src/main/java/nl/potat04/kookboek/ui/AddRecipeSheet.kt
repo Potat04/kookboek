@@ -31,10 +31,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import nl.potat04.kookboek.R
 import nl.potat04.kookboek.data.normalizeUrl
+import nl.potat04.kookboek.ui.theme.controlOutline
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,20 +63,23 @@ fun AddRecipeSheet(
                 .padding(bottom = 28.dp)
                 .navigationBarsPadding(),
         ) {
-            Text("Recept toevoegen", style = MaterialTheme.typography.headlineMedium)
+            Text(
+                stringResource(R.string.add_title),
+                style = MaterialTheme.typography.headlineMedium,
+            )
             Spacer(Modifier.height(6.dp))
             Text(
-                "Meestal makkelijker: deel de pagina vanuit je browser naar Kookboek.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                stringResource(R.string.add_body),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface,
             )
             Spacer(Modifier.height(20.dp))
 
             OutlinedTextField(
                 value = url,
                 onValueChange = { url = it },
-                label = { Text("Link naar het recept") },
-                placeholder = { Text("https://…") },
+                label = { Text(stringResource(R.string.add_url_label)) },
+                placeholder = { Text(stringResource(R.string.add_url_hint)) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Uri,
@@ -83,7 +89,7 @@ fun AddRecipeSheet(
                 textStyle = MaterialTheme.typography.bodyMedium,
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.controlOutline,
                 ),
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -91,7 +97,7 @@ fun AddRecipeSheet(
 
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedButton(onClick = { context.clipboardText()?.let { url = it } }) {
-                    Text("Plakken")
+                    Text(stringResource(R.string.add_paste))
                 }
                 Button(
                     onClick = { onImport(url) },
@@ -105,15 +111,15 @@ fun AddRecipeSheet(
                             color = MaterialTheme.colorScheme.onPrimary,
                         )
                         Spacer(Modifier.width(10.dp))
-                        Text("Ophalen…")
+                        Text(stringResource(R.string.add_fetching))
                     } else {
-                        Text("Ophalen")
+                        Text(stringResource(R.string.add_fetch))
                     }
                 }
             }
 
             Spacer(Modifier.height(14.dp))
-            TextButton(onClick = onWriteOwn) { Text("Of schrijf zelf een recept") }
+            TextButton(onClick = onWriteOwn) { Text(stringResource(R.string.add_write_own)) }
         }
     }
 }

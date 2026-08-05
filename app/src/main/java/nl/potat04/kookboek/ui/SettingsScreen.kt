@@ -15,7 +15,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -34,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
@@ -180,8 +183,14 @@ private fun PaletteSwatch(paletteId: PaletteId, selected: Boolean, onClick: () -
 
     Column(
         Modifier
-            .width(102.dp)
+            // A minimum, not a width: "Sinaasappel" is one long word that cannot wrap,
+            // and at the larger text sizes a fixed 102dp breaks it mid-word. The label
+            // below sets the real width; this only stops the short names being narrow.
+            .widthIn(min = 102.dp)
             .clip(shape)
+            // selectable rather than clickable: this is one choice out of six, and a
+            // screen reader should say so instead of announcing six buttons.
+            .selectable(selected = selected, onClick = onClick)
             .border(if (selected) 2.dp else 1.dp, edge, shape),
     ) {
         Box(
@@ -219,6 +228,8 @@ private fun PaletteSwatch(paletteId: PaletteId, selected: Boolean, onClick: () -
             stringResource(palette.labelRes),
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            softWrap = false,
             modifier = Modifier
                 .fillMaxWidth()
                 .background(MaterialTheme.colorScheme.surface)
@@ -281,9 +292,12 @@ private fun TypeSample() {
             Spacer(Modifier.height(6.dp))
             Text(
                 stringResource(R.string.settings_sample_summary),
-                style = MaterialTheme.typography.bodyMedium,
+                // Set exactly as a real recipe's headnote is, or the preview would be
+                // showing you something the app does not do.
+                style = MaterialTheme.typography.bodyLarge,
+                fontFamily = FontFamily.Serif,
                 fontStyle = FontStyle.Italic,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurface,
             )
             Spacer(Modifier.height(8.dp))
             Text(
@@ -291,14 +305,24 @@ private fun TypeSample() {
                 style = MaterialTheme.typography.bodyLarge,
             )
             Spacer(Modifier.height(8.dp))
+            // Built from the same resources a real card uses, so the sample cannot
+            // drift away from what it is a sample of.
+            val meta = listOf(
+                "leukerecepten.nl",
+                stringResource(R.string.recipe_time_minutes, SAMPLE_MINUTES),
+                pluralStringResource(R.plurals.recipe_servings_count, SAMPLE_SERVINGS, SAMPLE_SERVINGS),
+            ).joinToString("  ·  ")
             Text(
-                stringResource(R.string.settings_sample_meta),
+                meta,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }
 }
+
+private const val SAMPLE_MINUTES = 30
+private const val SAMPLE_SERVINGS = 4
 
 private fun appVersion(context: android.content.Context): String = runCatching {
     context.packageManager.getPackageInfo(context.packageName, 0).versionName

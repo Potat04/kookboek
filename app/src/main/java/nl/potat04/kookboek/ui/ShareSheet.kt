@@ -21,15 +21,19 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import nl.potat04.kookboek.R
+import nl.potat04.kookboek.data.FailureReason
 import nl.potat04.kookboek.data.ParseQuality
 import nl.potat04.kookboek.data.Recipe
 
 sealed interface ShareState {
     data object Working : ShareState
     data class Done(val recipe: Recipe, val isNew: Boolean) : ShareState
-    data class Failed(val reason: String) : ShareState
+    data class Failed(val reason: FailureReason) : ShareState
 }
 
 /**
@@ -51,7 +55,9 @@ fun ShareSheet(
         Surface(
             shape = MaterialTheme.shapes.large,
             color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 3.dp,
+            // No tonalElevation: Material tints an elevated surface toward the accent,
+            // which quietly warmed this card and cost every line inside it about half
+            // a point of contrast. The shadow already lifts the sheet off the browser.
             shadowElevation = 12.dp,
             modifier = Modifier.fillMaxWidth(),
         ) {
@@ -76,10 +82,13 @@ private fun Working() {
         )
         Spacer(Modifier.width(16.dp))
         Column {
-            Text("Recept ophalen…", style = MaterialTheme.typography.titleLarge)
             Text(
-                "Even de pagina lezen",
-                style = MaterialTheme.typography.bodySmall,
+                stringResource(R.string.share_working_title),
+                style = MaterialTheme.typography.titleLarge,
+            )
+            Text(
+                stringResource(R.string.share_working_body),
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
@@ -87,18 +96,21 @@ private fun Working() {
 }
 
 @Composable
-private fun Failed(reason: String, onClose: () -> Unit) {
+private fun Failed(reason: FailureReason, onClose: () -> Unit) {
     Column {
-        Text("Niet gelukt", style = MaterialTheme.typography.headlineSmall)
+        Text(
+            stringResource(R.string.share_failed_title),
+            style = MaterialTheme.typography.headlineSmall,
+        )
         Spacer(Modifier.height(6.dp))
         Text(
-            reason,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            reason.text().resolve(),
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface,
         )
         Spacer(Modifier.height(14.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            Button(onClick = onClose) { Text("Sluiten") }
+            Button(onClick = onClose) { Text(stringResource(R.string.action_close)) }
         }
     }
 }
@@ -116,8 +128,10 @@ private fun Done(state: ShareState.Done, onClose: () -> Unit, onOpen: (String) -
             )
             Spacer(Modifier.width(8.dp))
             Text(
-                if (state.isNew) "Bewaard in Kookboek" else "Stond er al in",
-                style = MaterialTheme.typography.labelMedium,
+                stringResource(
+                    if (state.isNew) R.string.share_saved else R.string.share_already_saved
+                ),
+                style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.primary,
             )
         }
@@ -132,15 +146,17 @@ private fun Done(state: ShareState.Done, onClose: () -> Unit, onOpen: (String) -
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
                 Text(
-                    recipe.title,
+                    recipe.displayTitle(),
                     style = MaterialTheme.typography.titleLarge,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Spacer(Modifier.height(3.dp))
+                Spacer(Modifier.height(4.dp))
                 Text(
                     summary(recipe),
-                    style = MaterialTheme.typography.bodySmall,
+                    // This one line is the whole point of the sheet — it is what tells
+                    // you whether the recipe came through. It is not a footnote.
+                    style = MaterialTheme.typography.bodyMedium,
                     color = if (recipe.quality == ParseQuality.FULL)
                         MaterialTheme.colorScheme.onSurfaceVariant
                     else MaterialTheme.colorScheme.error,
@@ -150,19 +166,22 @@ private fun Done(state: ShareState.Done, onClose: () -> Unit, onOpen: (String) -
 
         Spacer(Modifier.height(18.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            TextButton(onClick = onClose) { Text("Klaar") }
+            TextButton(onClick = onClose) { Text(stringResource(R.string.action_done)) }
             Spacer(Modifier.width(6.dp))
-            Button(onClick = { onOpen(recipe.id) }) { Text("Openen") }
+            Button(onClick = { onOpen(recipe.id) }) { Text(stringResource(R.string.action_open)) }
         }
     }
 }
 
+@Composable
 private fun summary(recipe: Recipe): String = when (recipe.quality) {
-    ParseQuality.FULL ->
-        "${recipe.ingredients.size} ingrediënten · ${recipe.steps.size} stappen"
-    ParseQuality.PARTIAL -> when {
-        recipe.ingredients.isEmpty() -> "Geen ingrediënten gevonden — check het even"
-        else -> "Geen stappen gevonden — check het even"
-    }
-    ParseQuality.LINK_ONLY -> "Alleen de link bewaard"
+    ParseQuality.FULL -> listOf(
+        pluralStringResource(R.plurals.count_ingredients, recipe.ingredients.size, recipe.ingredients.size),
+        pluralStringResource(R.plurals.count_steps, recipe.steps.size, recipe.steps.size),
+    ).joinToString(" · ")
+    ParseQuality.PARTIAL -> stringResource(
+        if (recipe.ingredients.isEmpty()) R.string.share_summary_no_ingredients
+        else R.string.share_summary_no_steps
+    )
+    ParseQuality.LINK_ONLY -> stringResource(R.string.share_summary_link_only)
 }

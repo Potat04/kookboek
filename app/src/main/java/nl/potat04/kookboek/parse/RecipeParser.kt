@@ -279,7 +279,7 @@ object RecipeParser {
             steps = steps.filter { it.isNotBlank() }.map { Step(it) },
             totalMinutes = duration(timeRaw) ?: minutesFromText(timeRaw),
             servings = yieldTxt?.let { firstInt(it) },
-            servingsLabel = yieldTxt?.let(::localizeYield),
+            servingsLabel = descriptiveYield(yieldTxt),
             source = ParseSource.MICRODATA,
         )
     }
@@ -419,7 +419,9 @@ object RecipeParser {
             .trimEnd('/').substringAfterLast('/')
             .substringBeforeLast('.')
         val words = slug.replace('-', ' ').replace('_', ' ').trim()
-        return if (words.isBlank()) host(url) ?: "Recept"
+        // No Dutch fallback here: a title with nothing left to guess from stays blank,
+        // and the screen fills in "Naamloos recept" in the language that is set.
+        return if (words.isBlank()) host(url).orEmpty()
         else words.replaceFirstChar { it.uppercase() }
     }
 
@@ -471,30 +473,29 @@ object RecipeParser {
         else -> primitiveOf(e)?.let { firstInt(it) }
     }
 
-    /** Prefer a descriptive yield ("15 stuks") over a bare number. */
-    private fun servingsText(e: JsonElement?): String? {
-        val all = stringsFrom(e).map { clean(it) }.filter { it.isNotBlank() }
-        val descriptive = all.firstOrNull { it.any(Char::isLetter) }
-        return descriptive?.let(::localizeYield) ?: all.firstOrNull()?.let { n ->
-            firstInt(n)?.let { portions(it) }
-        }
-    }
-
-    private fun portions(count: Int): String = if (count == 1) "1 portie" else "$count porties"
+    private fun servingsText(e: JsonElement?): String? =
+        stringsFrom(e).firstNotNullOfOrNull { descriptiveYield(it) }
 
     /**
-     * "4 servings" reads as a leftover from the source page in a Dutch app.
-     * Anything more specific than a plain serving count ("15 stuks", "1 loaf") is left alone.
+     * The site's own words for the yield, but only when they say more than a number.
+     *
+     * "15 stuks", "1 loaf" and "24 koekjes" are kept: they tell you something a count
+     * cannot, and they are what the page actually promised. A plain serving count is
+     * dropped in either language — the number is already in [ParsedRecipe.servings],
+     * and the screen words it in whichever language is set.
+     *
+     * This used to rewrite "4 servings" into "4 porties", back when the app only spoke
+     * Dutch. That froze one language into the database for as long as the recipe was
+     * kept, which is exactly the wrong place for it.
      */
-    fun localizeYield(label: String): String {
-        val text = label.trim()
-        Regex("^(\\d+)\\s*(servings?|serves|persons?|people|portions?|porties|portie|personen|persoon)$",
-            RegexOption.IGNORE_CASE).find(text)?.let { m ->
-            return portions(m.groupValues[1].toInt())
-        }
-        Regex("^(?:serves|for)\\s*(\\d+)$", RegexOption.IGNORE_CASE).find(text)?.let { m ->
-            return portions(m.groupValues[1].toInt())
-        }
-        return label
+    fun descriptiveYield(label: String?): String? {
+        val text = label?.let(::clean).orEmpty()
+        if (text.isBlank()) return null
+        // A bare "4" carries nothing the count does not.
+        if (text.none(Char::isLetter)) return null
+        val portion = "servings?|serves|persons?|people|portions?|porties|portie|personen|persoon"
+        if (Regex("^\\d+\\s*($portion)$", RegexOption.IGNORE_CASE).matches(text)) return null
+        if (Regex("^(?:serves|for|voor)\\s*\\d+$", RegexOption.IGNORE_CASE).matches(text)) return null
+        return text
     }
 }

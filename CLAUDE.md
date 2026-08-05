@@ -16,7 +16,8 @@ verandert aan de build of de opslag, lees de betreffende pagina in `.claude/know
 | Lagen, datastromen, waar welke beslissing valt | [architecture.md](.claude/knowledge/architecture.md) |
 | Hoe recepten van een pagina gelezen worden | [parser.md](.claude/knowledge/parser.md) |
 | Room-schema, migraties, afbeeldingen | [data.md](.claude/knowledge/data.md) |
-| Papier-thema, typografie, UX-regels | [ui.md](.claude/knowledge/ui.md) |
+| De zes paletten, contrast-eisen, typografie, UX-regels | [ui.md](.claude/knowledge/ui.md) |
+| Nederlands/Engels, en waarom er geen tekst in Kotlin staat | [localization.md](.claude/knowledge/localization.md) |
 | Testen, emulator, de deel-flow echt uitproberen | [testing.md](.claude/knowledge/testing.md) |
 | Signeren en een bundle uitbrengen | [release.md](.claude/knowledge/release.md) |
 | Wat er eerder misging en hoe het opgelost is | [gotchas.md](.claude/knowledge/gotchas.md) |
@@ -27,8 +28,10 @@ verandert aan de build of de opslag, lees de betreffende pagina in `.claude/know
    AGP 9.1.1 brengt zijn eigen Kotlin 2.2.10 mee. De Compose-, serialization- en KSP-plugins
    moeten daar exact op aansluiten. Kotlin los updaten breekt de build gegarandeerd.
 2. **Geen `org.jetbrains.kotlin.android` plugin toevoegen.** Die zit al in AGP en botst.
-3. **De UI is Nederlands.** Alle zichtbare tekst, ook foutmeldingen. Code, commentaar en
-   commits zijn Engels.
+3. **Geen zichtbare tekst in Kotlin.** De app is Nederlands en spreekt ook Engels: alles staat in
+   `res/values/strings.xml` (Nederlands, de default) en `res/values-en/strings.xml`, sleutel voor
+   sleutel gelijk. Ook foutmeldingen en `contentDescription`. Lever je een string, lever dan beide.
+   Code, commentaar en commits zijn Engels. Zie [localization.md](.claude/knowledge/localization.md).
 4. **`keystore.properties` en `*.jks` gaan nooit de repo in.** Staan in `.gitignore`. Niet
    opnemen in output, niet loggen, niet naar buiten sturen.
 5. **Wijzig je een `@Entity`, dan hoort daar een migratie bij** en een opgehoogde
@@ -55,7 +58,7 @@ verandert aan de build of de opslag, lees de betreffende pagina in `.claude/know
 
 ```
 app/src/main/java/nl/potat04/kookboek/
-  KookboekApp.kt        Application: bouwt de repository, houdt de app-brede CoroutineScope
+  KookboekApp.kt        Application: bouwt repository + settings, houdt de app-brede scope
   MainActivity.kt       de app zelf (Compose, navigatie)
   ShareActivity.kt      het venstertje dat over je browser verschijnt bij Delen
   data/
@@ -63,11 +66,22 @@ app/src/main/java/nl/potat04/kookboek/
     RecipeRepository.kt ophalen, importeren, verversen, verwijderen
     RecipeStore.kt      Room erachter, StateFlow ervoor
     ImageStore.kt       foto's downloaden, verkleinen, opruimen
+    Settings.kt         welk palet, licht/donker, tekstgrootte
+    SettingsStore.kt    SharedPreferences erachter, StateFlow ervoor
     db/                 entities, DAO, database, converters
   parse/
     RecipeParser.kt     JSON-LD > microdata > plugins > heuristiek
     Scaling.kt          porties omrekenen ("1½ el")
-  ui/                   schermen, sheets, thema
+  ui/
+    Labels.kt           getallen uit het model naar tekst in de gekozen taal
+    UiText.kt           tekst die nog geen taal heeft (voor snackbars)
+    Language.kt         de taalkeuze, via de LocaleManager van het platform
+    SettingsScreen.kt   palet, licht/donker, tekstgrootte, taal
+    theme/Palettes.kt   de zes paletten, contrast-gecontroleerd
+    ...                 overige schermen en sheets
+app/src/main/res/
+  values/strings.xml    Nederlands (de default)
+  values-en/strings.xml Engels, sleutel voor sleutel gelijk
 app/src/test/           unit tests + opgeslagen pagina's als fixtures
 app/schemas/            Room-schema, ingecheckt voor toekomstige migraties
 ```

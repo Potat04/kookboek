@@ -20,7 +20,6 @@
     <string name="action_undo">Ongedaan maken</string>
 
     <!-- Library -->
-    <string name="library_settings">Instellingen</string>
     <string name="library_empty_count">nog leeg</string>
     <plurals name="library_count">
         <item quantity="one">%d recept</item>
@@ -48,7 +47,8 @@
     <string name="recipe_untitled">Naamloos recept</string>
     <string name="recipe_time_minutes">%d min</string>
     <string name="recipe_time_hours">%d uur</string>
-    <string name="recipe_time_hours_minutes">%1$d u %2$d m</string>
+    <!-- Voluit, zoals de twee regels erboven: "45 min", "2 uur", "1 uur 30 min". -->
+    <string name="recipe_time_hours_minutes">%1$d uur %2$d min</string>
     <plurals name="recipe_servings_count">
         <item quantity="one">%d portie</item>
         <item quantity="other">%d porties</item>
@@ -91,10 +91,8 @@
     <string name="edit_title">Recept bewerken</string>
     <string name="edit_field_title">Titel</string>
     <string name="edit_field_minutes">Minuten</string>
-    <string name="edit_field_servings">Porties</string>
     <string name="edit_field_ingredients">Ingrediënten — één per regel</string>
     <string name="edit_field_steps">Stappen — één per regel, \'# kopje\' maakt een tussenkop</string>
-    <string name="edit_field_notes">Notities</string>
 
     <!-- The sheet that floats over the browser -->
     <string name="share_working_title">Recept ophalen…</string>
@@ -120,7 +118,6 @@
     <string name="toast_nothing_changed">Niets veranderd</string>
     <string name="toast_refreshed">Opnieuw opgehaald — %s</string>
     <string name="toast_partial">Deels gelezen — check het even</string>
-    <string name="toast_link_only">Alleen de link bewaard</string>
 
     <!-- What went wrong while importing -->
     <string name="error_no_valid_link">Geen geldige link gevonden</string>
@@ -141,14 +138,12 @@
     <string name="settings_text_large">Groot</string>
     <string name="settings_text_huge">Extra groot</string>
     <string name="settings_language">Taal</string>
-    <string name="settings_language_system">Volg de telefoon</string>
     <string name="settings_language_dutch">Nederlands</string>
     <string name="settings_language_english">Engels</string>
     <string name="settings_language_note">De app laadt even opnieuw als je de taal wisselt. Je recepten blijven zoals ze zijn — die staan in de taal van de site waar ze vandaan komen.</string>
     <string name="settings_sample_title">Loempia\'s uit de airfryer</string>
     <string name="settings_sample_summary">Knapperig zonder een pan olie, en in een halfuur op tafel.</string>
     <string name="settings_sample_step">Laat het deeg een kwartier rusten onder een theedoek.</string>
-    <string name="settings_sample_meta">leukerecepten.nl  ·  30 min  ·  4 porties</string>
     <string name="settings_version">Kookboek %s</string>
 
     <string name="palette_sinaasappel">Sinaasappel</string>

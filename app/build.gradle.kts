@@ -66,6 +66,18 @@ android {
     buildFeatures {
         compose = true
     }
+    bundle {
+        language {
+            // Both languages have to ship in the base APK. A bundle splits resources by
+            // locale by default and Play only installs the split for the locale the
+            // device is set to — so picking the other language on the settings screen
+            // would restart the app into strings that are not on the device, and it
+            // would come back in the language it was already in. Two locales' worth of
+            // strings is a few kB; on-demand language downloads are far more machinery
+            // than this app needs. Only shows up in a bundle install, never in an APK.
+            enableSplit = false
+        }
+    }
     testOptions {
         unitTests.isIncludeAndroidResources = true
     }

@@ -10,7 +10,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.async
+import nl.potat04.kookboek.data.FailureReason
 import nl.potat04.kookboek.data.ImportResult
 import nl.potat04.kookboek.data.extractUrl
 import nl.potat04.kookboek.data.normalizeUrl
@@ -36,12 +38,15 @@ class ShareActivity : ComponentActivity() {
         val url = urlFromIntent(intent)
 
         setContent {
-            KookboekTheme {
+            val settings by app.settings.settings.collectAsStateWithLifecycle()
+            // The sheet floats over the browser, so it must not repaint the window
+            // background or touch the system bars — only its own card is ours.
+            KookboekTheme(settings = settings, applySystemBars = false) {
                 var state by remember { mutableStateOf<ShareState>(ShareState.Working) }
 
                 LaunchedEffect(url) {
                     state = if (url == null) {
-                        ShareState.Failed("Hier zat geen link in")
+                        ShareState.Failed(FailureReason.NOTHING_SHARED)
                     } else {
                         when (val result = app.scope.async { app.repository.import(url) }.await()) {
                             is ImportResult.Saved -> ShareState.Done(result.recipe, isNew = true)

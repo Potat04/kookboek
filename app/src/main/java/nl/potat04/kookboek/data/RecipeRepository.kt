@@ -8,6 +8,7 @@ import nl.potat04.kookboek.parse.ParsedRecipe
 import nl.potat04.kookboek.parse.RecipeParser
 import org.jsoup.Jsoup
 import java.net.URI
+import java.util.Locale
 
 /**
  * Why an import came back empty-handed. A reason and not a sentence: this layer has
@@ -101,7 +102,7 @@ class RecipeRepository(
         runCatching {
             val doc = Jsoup.connect(url)
                 .userAgent(ImageStore.USER_AGENT)
-                .header("Accept-Language", "nl,en;q=0.8")
+                .header("Accept-Language", acceptLanguage())
                 .followRedirects(true)
                 .ignoreHttpErrors(true)
                 .timeout(25_000)
@@ -118,6 +119,20 @@ class RecipeRepository(
 
     private companion object {
         const val TAG = "RecipeRepository"
+
+        /**
+         * Sites that publish in more than one language should answer in the one the
+         * reader picked. This is the only place the language choice reaches the
+         * *content* of a recipe rather than the app around it.
+         *
+         * The app locale set through LocaleManager is what `Locale.getDefault()`
+         * reports, so no plumbing is needed to find out what it is.
+         */
+        fun acceptLanguage(): String {
+            val chosen = Locale.getDefault().language.takeIf { it.isNotBlank() } ?: "nl"
+            val fallback = if (chosen == "nl") "en" else "nl"
+            return "$chosen,$fallback;q=0.8"
+        }
 
         /** Ignores tracking noise so re-sharing the same page is recognised as the same page. */
         fun comparableUrl(url: String): String = runCatching {
