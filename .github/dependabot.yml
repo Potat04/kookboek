@@ -1,0 +1,18 @@
+# Dependabot opens PRs for outdated dependencies. Gradle updates land grouped and
+# monthly on purpose: AGP ships its own Kotlin, so version bumps here are rarely
+# safe to merge one at a time. Read .claude/knowledge/build.md before accepting one.
+version: 2
+updates:
+  - package-ecosystem: gradle
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 5
+    groups:
+      gradle:
+        patterns: ["*"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
