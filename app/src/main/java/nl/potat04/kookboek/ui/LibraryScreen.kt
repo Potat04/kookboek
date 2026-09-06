@@ -3,6 +3,7 @@ package nl.potat04.kookboek.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,14 +17,19 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.DropdownMenu
@@ -71,8 +77,15 @@ fun LibraryScreen(
     onOpen: (Recipe) -> Unit,
     onAdd: () -> Unit,
     onSettings: () -> Unit,
+    selection: Set<String>,
+    busy: Boolean,
+    onToggleSelected: (Recipe) -> Unit,
+    onClearSelection: () -> Unit,
+    onDeleteSelected: () -> Unit,
+    onRefreshSelected: () -> Unit,
     contentPadding: PaddingValues,
 ) {
+    val selecting = selection.isNotEmpty()
     Box(Modifier.fillMaxWidth()) {
         LazyColumn(
             contentPadding = PaddingValues(
@@ -84,7 +97,17 @@ fun LibraryScreen(
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             item {
-                Masthead(count = total, onSettings = onSettings)
+                if (selecting) {
+                    SelectionBar(
+                        count = selection.size,
+                        busy = busy,
+                        onClear = onClearSelection,
+                        onRefresh = onRefreshSelected,
+                        onDelete = onDeleteSelected,
+                    )
+                } else {
+                    Masthead(count = total, onSettings = onSettings)
+                }
                 Spacer(Modifier.height(14.dp))
             }
 
@@ -101,12 +124,20 @@ fun LibraryScreen(
                 total == 0 -> item { EmptyLibrary() }
                 recipes.isEmpty() -> item { NoMatches(favouritesOnly) }
                 else -> items(recipes, key = { it.id }) { recipe ->
-                    RecipeCard(recipe) { onOpen(recipe) }
+                    RecipeCard(
+                        recipe = recipe,
+                        selected = recipe.id in selection,
+                        // While picking, a plain tap keeps picking. Opening a recipe
+                        // mid-selection would throw the choice away for a tap that was
+                        // meant to add to it.
+                        onClick = { if (selecting) onToggleSelected(recipe) else onOpen(recipe) },
+                        onLongClick = { onToggleSelected(recipe) },
+                    )
                 }
             }
         }
 
-        ExtendedFloatingActionButton(
+        if (!selecting) ExtendedFloatingActionButton(
             onClick = onAdd,
             containerColor = MaterialTheme.colorScheme.primary,
             contentColor = MaterialTheme.colorScheme.onPrimary,
@@ -243,22 +274,95 @@ private fun FilterRow(
     }
 }
 
+/**
+ * What the masthead turns into once recipes are picked out.
+ *
+ * It offers what a single recipe's own menu offers, refetch and delete, so that the way
+ * to tidy up ten link-only imports is the way you already know for one.
+ */
 @Composable
-private fun RecipeCard(recipe: Recipe, onClick: () -> Unit) {
+private fun SelectionBar(
+    count: Int,
+    busy: Boolean,
+    onClear: () -> Unit,
+    onRefresh: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        IconButton(onClick = onClear) {
+            Icon(
+                Icons.Default.Close,
+                contentDescription = stringResource(R.string.library_selection_clear),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Spacer(Modifier.width(4.dp))
+        Text(
+            pluralStringResource(R.plurals.library_selected, count, count),
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.weight(1f),
+        )
+        IconButton(onClick = onRefresh, enabled = !busy) {
+            Icon(
+                Icons.Default.Refresh,
+                contentDescription = stringResource(R.string.library_selection_refresh),
+                tint = if (busy) MaterialTheme.colorScheme.outline
+                else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        IconButton(onClick = onDelete) {
+            Icon(
+                Icons.Default.Delete,
+                contentDescription = stringResource(R.string.library_selection_delete),
+                tint = MaterialTheme.colorScheme.error,
+            )
+        }
+    }
+}
+
+@Composable
+private fun RecipeCard(
+    recipe: Recipe,
+    selected: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+) {
     Surface(
-        onClick = onClick,
         shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.surface,
+        color = if (selected) MaterialTheme.colorScheme.primaryContainer
+        else MaterialTheme.colorScheme.surface,
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, MaterialTheme.colorScheme.outline, MaterialTheme.shapes.medium),
+            .border(
+                width = if (selected) 2.dp else 1.dp,
+                color = if (selected) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.outline,
+                shape = MaterialTheme.shapes.medium,
+            )
+            .combinedClickable(onLongClick = onLongClick, onClick = onClick),
     ) {
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            RecipeImage(
-                fileName = recipe.imageFile,
-                title = recipe.title,
-                modifier = Modifier.size(78.dp),
-            )
+            Box {
+                RecipeImage(
+                    fileName = recipe.imageFile,
+                    title = recipe.title,
+                    modifier = Modifier.size(78.dp),
+                )
+                // On the picture rather than in the row: a tick beside the text would
+                // steal the width that "15 stuks" needs and truncate the yield away.
+                if (selected) {
+                    Icon(
+                        Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(3.dp)
+                            .size(24.dp)
+                            .background(MaterialTheme.colorScheme.surface, CircleShape),
+                    )
+                }
+            }
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
                 Text(

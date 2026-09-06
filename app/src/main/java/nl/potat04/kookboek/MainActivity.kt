@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.activity.compose.BackHandler
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
@@ -113,6 +114,7 @@ private fun KookboekNavHost(
     val favouritesOnly by vm.favouritesOnly.collectAsStateWithLifecycle()
     val sort by vm.sort.collectAsStateWithLifecycle()
     val busy by vm.busy.collectAsStateWithLifecycle()
+    val selection by vm.selection.collectAsStateWithLifecycle()
     val loaded by vm.loaded.collectAsStateWithLifecycle()
 
     // Recipes created by "write it yourself" only hit disk once you save them.
@@ -134,8 +136,18 @@ private fun KookboekNavHost(
                 onOpen = { nav.navigate("recipe/${it.id}") },
                 onAdd = { addOpen = true },
                 onSettings = { nav.navigate("settings") },
+                selection = selection,
+                busy = busy,
+                onToggleSelected = { vm.toggleSelected(it.id) },
+                onClearSelection = vm::clearSelection,
+                onDeleteSelected = vm::deleteSelected,
+                onRefreshSelected = vm::refreshSelected,
                 contentPadding = padding,
             )
+
+            // Back drops the selection before it leaves the library, the way every
+            // other app that has a selection mode behaves.
+            BackHandler(enabled = selection.isNotEmpty()) { vm.clearSelection() }
 
             if (addOpen) {
                 AddRecipeSheet(

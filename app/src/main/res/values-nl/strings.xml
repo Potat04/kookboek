@@ -33,6 +33,13 @@
     <string name="library_favourites">Favorieten</string>
     <string name="library_favourite">Favoriet</string>
     <string name="library_add">Toevoegen</string>
+    <plurals name="library_selected">
+        <item quantity="one">%d geselecteerd</item>
+        <item quantity="other">%d geselecteerd</item>
+    </plurals>
+    <string name="library_selection_clear">Stoppen met selecteren</string>
+    <string name="library_selection_delete">Geselecteerde verwijderen</string>
+    <string name="library_selection_refresh">Geselecteerde opnieuw ophalen</string>
     <string name="library_no_info">Geen extra info</string>
     <string name="library_link_only">alleen de link</string>
     <string name="library_empty_title">Nog een leeg kookboek</string>
@@ -116,6 +123,16 @@
         <item quantity="one">%d stap</item>
         <item quantity="other">%d stappen</item>
     </plurals>
+    <plurals name="toast_deleted_many">
+        <item quantity="one">%d recept verwijderd</item>
+        <item quantity="other">%d recepten verwijderd</item>
+    </plurals>
+    <plurals name="toast_refreshed_many">
+        <item quantity="one">%d recept bijgewerkt</item>
+        <item quantity="other">%d recepten bijgewerkt</item>
+    </plurals>
+    <string name="toast_refreshed_partial">%1$d bijgewerkt, %2$d mislukt</string>
+    <string name="toast_refresh_no_source">Niets op te halen: geen van deze komt van een pagina</string>
     <string name="toast_deleted">\'%s\' verwijderd</string>
     <string name="toast_already_saved">Stond al in je kookboek</string>
     <string name="toast_nothing_changed">Niets veranderd</string>

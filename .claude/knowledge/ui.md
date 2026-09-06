@@ -174,6 +174,27 @@ een doos van nul bij nul, vangt geen tikken weg en is toch op een echt formaat u
 zodat hem zichtbaar maken geen relayout kost. Pas als de controle om een tik vraagt komt hij
 naar voren, met een kop en een regel uitleg erboven. Zie [fetching.md](fetching.md).
 
+## Meerdere recepten tegelijk
+
+Lang drukken op een kaart in de bibliotheek begint een selectie; daarna voegt een gewone tik toe
+en haalt weer weg. De kop wordt dan een balk met "N geselecteerd", een kruisje, en dezelfde twee
+acties die één recept in zijn eigen menu heeft: opnieuw ophalen en verwijderen. De plusknop gaat
+weg zolang je kiest, en Terug laat de selectie los in plaats van het scherm.
+
+Waarom precies die twee acties: wie tien mislukte imports opruimt wil ze weggooien of alsnog goed
+ophalen, en dat zijn de dingen die een recept ook los aanbiedt. Een derde manier verzinnen zou
+betekenen dat je twee dingen moet onthouden.
+
+Het vinkje staat op de foto, niet naast de tekst. Naast de tekst pakt het de breedte af die
+"15 stuks" nodig heeft en dan valt de opbrengst weg achter een beletselteken.
+
+De selectie leeft in `KookboekViewModel` als een verzameling ids, niet als recepten. De lijst
+eronder beweegt namelijk: opnieuw ophalen vervangt een recept in zijn geheel, en een vastgehouden
+kopie zou daarna naar iets wijzen dat er niet meer is.
+
+Opnieuw ophalen gaat één voor één. Er is maar één `ChallengeStage`, dus meerdere WebViews
+tegelijk zouden om die ene plek vechten. Zie [fetching.md](fetching.md).
+
 ## UX-regels die niet onderhandelbaar zijn
 
 - **Nederlands en Engels, met Engels als terugvaloptie.** Zie
@@ -192,5 +213,8 @@ naar voren, met een kop en een regel uitleg erboven. Zie [fetching.md](fetching.
 - **Een botcontrole komt alleen in beeld als hij een tik nodig heeft.** De rest gebeurt buiten
   het zicht, in een seconde of twee. Een browser die zomaar over het deelvenster klapt zou
   precies de belofte breken die de regel hierboven maakt.
+- **Ook een selectie verwijderen is terug te draaien.** Eén snackbar, één Ongedaan maken, alles
+  terug. Een dialoog vooraf is er niet: die vraagt om bevestiging op het moment dat je het het
+  zekerst weet, en helpt niet op het moment daarna.
 - **Instellingen hebben geen Bewaren-knop.** Je kiest hoe iets eruitziet; het enige nuttige
   voorbeeld is het echte ding.

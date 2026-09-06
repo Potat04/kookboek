@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import nl.potat04.kookboek.KookboekApp
 import nl.potat04.kookboek.R
@@ -52,6 +53,17 @@ class KookboekViewModel(private val repo: RecipeRepository) : ViewModel() {
 
     private val _busy = MutableStateFlow(false)
     val busy: StateFlow<Boolean> = _busy.asStateFlow()
+
+    /**
+     * The recipes picked out for a job on several at once, by id.
+     *
+     * Ids rather than recipes, because the list underneath keeps moving: a refresh
+     * replaces a recipe wholesale, and holding the old copy would act on something that
+     * is no longer there. Empty means the library is in its normal state; anything in it
+     * means the screen is in selection mode.
+     */
+    private val _selection = MutableStateFlow<Set<String>>(emptySet())
+    val selection: StateFlow<Set<String>> = _selection.asStateFlow()
 
     private val toasts = Channel<Toast>(Channel.BUFFERED)
     val messages = toasts.receiveAsFlow()
@@ -110,6 +122,66 @@ class KookboekViewModel(private val repo: RecipeRepository) : ViewModel() {
     }
 
     fun save(recipe: Recipe) = viewModelScope.launch { repo.save(recipe) }
+
+    fun toggleSelected(id: String) {
+        _selection.update { if (id in it) it - id else it + id }
+    }
+
+    fun clearSelection() {
+        _selection.value = emptySet()
+    }
+
+    /** The picked recipes as they stand now, in the order the library shows them. */
+    private fun selected(): List<Recipe> =
+        visible.value.filter { it.id in _selection.value }
+
+    /** Deletes everything picked, with one undo that brings all of it back. */
+    fun deleteSelected() = viewModelScope.launch {
+        val chosen = selected()
+        if (chosen.isEmpty()) return@launch
+        clearSelection()
+        chosen.forEach { repo.delete(it) }
+        toasts.send(
+            Toast(
+                message = if (chosen.size == 1) {
+                    UiText.res(R.string.toast_deleted, chosen.first().titleText())
+                } else {
+                    UiText.Quantity(R.plurals.toast_deleted_many, chosen.size)
+                },
+                actionLabel = UiText.Res(R.string.action_undo),
+                undo = { viewModelScope.launch { chosen.forEach { repo.restore(it) } } },
+            )
+        )
+    }
+
+    /**
+     * Re-reads every picked recipe that came from a page, one after another.
+     *
+     * One at a time on purpose. A page behind a bot check needs the WebView, there is
+     * only one [nl.potat04.kookboek.data.ChallengeStage] to put it on, and a check that
+     * wants a tap has to be answerable. Several at once would race for that one spot.
+     */
+    fun refreshSelected() = viewModelScope.launch {
+        val chosen = selected().filter { it.sourceUrl != null }
+        if (chosen.isEmpty()) {
+            toasts.send(Toast(UiText.Res(R.string.toast_refresh_no_source)))
+            return@launch
+        }
+        _busy.value = true
+        var failed = 0
+        for (recipe in chosen) {
+            if (repo.refresh(recipe) is ImportResult.Failed) failed++
+        }
+        _busy.value = false
+        clearSelection()
+        val done = chosen.size - failed
+        toasts.send(
+            Toast(
+                if (failed == 0) UiText.Quantity(R.plurals.toast_refreshed_many, done)
+                else UiText.res(R.string.toast_refreshed_partial, done, failed)
+            )
+        )
+    }
 
     fun delete(recipe: Recipe) = viewModelScope.launch {
         repo.delete(recipe)

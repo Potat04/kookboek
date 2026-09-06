@@ -31,6 +31,13 @@
     <string name="library_favourites">Favourites</string>
     <string name="library_favourite">Favourite</string>
     <string name="library_add">Add</string>
+    <plurals name="library_selected">
+        <item quantity="one">%d selected</item>
+        <item quantity="other">%d selected</item>
+    </plurals>
+    <string name="library_selection_clear">Stop selecting</string>
+    <string name="library_selection_delete">Delete selected</string>
+    <string name="library_selection_refresh">Refetch selected</string>
     <string name="library_no_info">No extra info</string>
     <string name="library_link_only">link only</string>
     <string name="library_empty_title">Still an empty cookbook</string>
@@ -109,6 +116,16 @@
         <item quantity="one">%d step</item>
         <item quantity="other">%d steps</item>
     </plurals>
+    <plurals name="toast_deleted_many">
+        <item quantity="one">%d recipe deleted</item>
+        <item quantity="other">%d recipes deleted</item>
+    </plurals>
+    <plurals name="toast_refreshed_many">
+        <item quantity="one">%d recipe updated</item>
+        <item quantity="other">%d recipes updated</item>
+    </plurals>
+    <string name="toast_refreshed_partial">%1$d updated, %2$d failed</string>
+    <string name="toast_refresh_no_source">Nothing to refetch: none of these came from a page</string>
     <string name="toast_deleted">\'%s\' deleted</string>
     <string name="toast_already_saved">Already in your cookbook</string>
     <string name="toast_nothing_changed">Nothing changed</string>
