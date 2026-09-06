@@ -71,7 +71,9 @@ De tests legden het oude gedrag vast, dus die moesten mee.
   een PNG) of helemaal niet.
 - **Er is één AVD: `kookboek`** (Android 36). Zie [testing.md](testing.md).
 - **`ah.nl` blokkeert scrapers.** De opgeslagen fixture is een botblokkade-pagina en dient als
-  test dat de app daar netjes mee omgaat in plaats van te crashen.
+  test dat de app daar netjes mee omgaat in plaats van te crashen. Het is geen
+  Cloudflare-interstitial, dus `ChallengePage` laat hem staan en het wordt een
+  `LINK_ONLY`-recept.
 
 ## De botcontrole van Cloudflare
 
@@ -92,10 +94,11 @@ de emulator; komt Chrome er wel doorheen, dan ligt het aan jou.
 **De WebView hoeft nergens aan te hangen.** Dat is hier eerst anders opgeschreven, en dat was fout.
 Tijdens het zoeken naar de user-agent-bug leek het erop dat een losgekoppelde WebView geen frames
 tekent en de controle daarom eeuwig doorloopt. Nadat de user agent klopte is dat opnieuw gemeten met
-een WebView die aan niets hing: die kwam er gewoon doorheen. Mihon doet het ook zo — `createWebView`
-is daar niet meer dan `WebView(context)` met instellingen en een user agent, zonder afmeting of
-ouder. Eén oorzaak dus, niet twee. `ChallengeStage` en `ChallengeOverlay` blijven wél nodig, maar om
-een andere reden: een controle die om een tik vraagt moet iemand kúnnen aanraken.
+een WebView die aan niets hing: die kwam er gewoon doorheen. Mihon doet het ook zo.
+`createWebView` is daar niet meer dan `WebView(context)` met instellingen en een user agent,
+zonder afmeting of ouder. Eén oorzaak dus, niet twee. `ChallengeStage` en `ChallengeOverlay`
+blijven wél nodig, maar om een andere reden: een controle die om een tik vraagt moet iemand
+kúnnen aanraken.
 
 **Cloudflare zegt zelf wanneer het interactief wordt.** De challenge post een bericht
 (`source: "cloudflare-challenge"`, `event: "interactiveBegin"`). Daar luisteren is beter dan op de
@@ -107,6 +110,13 @@ De klok blijft als achtervang staan voor muren die niet van Cloudflare zijn.
 documenteert dat ook zo. `ChallengePage` kijkt daar als eerste naar. In de body zoeken blijft nodig
 voor de hop ervóór: een site kan er zijn eigen JavaScript-redirect voor zetten, zonder
 Cloudflare-header.
+
+**Een WebView vernietigen die nog in een view tree hangt, crasht.** `PageFetcher` haalt hem er
+daarom zelf uit voordat het `destroy()` aanroept. Het scherm laat hem een frame later vallen,
+en op die timing vertrouwen is precies één frame te veel gevraagd.
+
+**Een echte controle is niet na te bouwen met een fixture.** `ChallengePage` is te testen, de weg
+erlangs niet: daarvoor heb je een site nodig die er op dat moment daadwerkelijk een opgooit.
 
 ## Kleur en contrast
 

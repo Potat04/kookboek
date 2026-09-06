@@ -166,6 +166,14 @@ Vier dingen om te weten:
   Zet iemand "thematische iconen" aan in Android, dan wint de `monochrome`-laag en doet onze kleur
   niet meer mee. Dat is de bedoeling van die instelling.
 
+## De botcontrole in beeld
+
+`ui/ChallengeOverlay.kt` tekent wat `PageFetcher` op de `ChallengeStage` zet, en elk scherm dat
+een import kan beginnen zet het bovenaan zijn content. Meestal is het niets: de WebView zit in
+een doos van nul bij nul, vangt geen tikken weg en is toch op een echt formaat uitgemeten,
+zodat hem zichtbaar maken geen relayout kost. Pas als de controle om een tik vraagt komt hij
+naar voren, met een kop en een regel uitleg erboven. Zie [fetching.md](fetching.md).
+
 ## UX-regels die niet onderhandelbaar zijn
 
 - **Nederlands en Engels, met Engels als terugvaloptie.** Zie
@@ -181,5 +189,8 @@ Vier dingen om te weten:
   expliciete `inverse*`-waarden.
 - **Delen houdt je waar je was.** `ShareActivity` is een venstertje over je browser, geen
   volledige app-start.
+- **Een botcontrole komt alleen in beeld als hij een tik nodig heeft.** De rest gebeurt buiten
+  het zicht, in een seconde of twee. Een browser die zomaar over het deelvenster klapt zou
+  precies de belofte breken die de regel hierboven maakt.
 - **Instellingen hebben geen Bewaren-knop.** Je kiest hoe iets eruitziet; het enige nuttige
   voorbeeld is het echte ding.

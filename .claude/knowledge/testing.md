@@ -4,9 +4,13 @@
 ./gradlew :app:testDebugUnitTest
 ```
 
-Drie testklassen, allemaal zonder Android-runtime:
+Vijf testklassen, allemaal zonder Android-runtime:
 
 - `RecipeParserTest` draait de parser tegen echte, opgeslagen pagina's.
+- `ChallengePageTest` doet hetzelfde voor de botcontrole-herkenning, tegen twee bewaarde
+  controlepagina's. Zie [fetching.md](fetching.md).
+- `LauncherIconTest` leest de manifest: elk palet een alias, precies één aan, allemaal naar de
+  router. Zie [ui.md](ui.md).
 - `ScalingTest` rekent porties om.
 - `StringResourcesTest` legt `values/` (Engels, de fallback) en `values-nl/` naast elkaar: dezelfde
   sleutels, hetzelfde soort, dezelfde meervoudsvormen, dezelfde placeholders. Die laatste is de
@@ -18,6 +22,12 @@ Drie testklassen, allemaal zonder Android-runtime:
 24kitchen.nl, bbcgoodfood.com en één pagina die helemaal geen receptdata prijsgeeft (ah.nl, die
 een botblokkade teruggeeft). De test controleert dat de app daar alsnog netjes iets
 bruikbaars van maakt.
+
+Daarnaast staan er twee controlepagina's: `challenge-redirect.html`, een JavaScript-redirect
+zonder Cloudflare-header, en `challenge-turnstile.html`. Ze zijn met een kale curl opgehaald
+onder de user agent van de app, en alleen de hostnaam is eruit gehaald. `ChallengePageTest`
+toetst beide kanten: deze twee moeten als controle herkend worden, en de vijf receptpagina's
+juist niet.
 
 "Werkt op mijn zelfgeschreven HTML" zegt niets over het echte web. Daarom draaien de tests tegen
 wat sites daadwerkelijk uitleveren.

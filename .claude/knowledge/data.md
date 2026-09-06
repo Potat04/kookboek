@@ -46,6 +46,13 @@ terugzetten. `pruneOrphans()` draait bij het opstarten en ruimt op wat door geen
 wordt aangewezen, met een marge van tien minuten, zodat een import die nú loopt niet zijn eigen
 net gedownloade plaatje kwijtraakt.
 
+## Cookies
+
+Niet van ons. Wat een site na een botcontrole afgeeft staat in de `CookieManager` van de
+WebView, en `SiteCookies` leest dat terug voor de gewone HTTP-verzoeken en voor de
+fotodownload. Er is geen eigen administratie en niets ervan raakt de database. Zie
+[fetching.md](fetching.md).
+
 ## Backup
 
 `allowBackup="true"` staat aan, dus database en foto's verhuizen mee naar een nieuw toestel.

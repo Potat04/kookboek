@@ -26,6 +26,11 @@ recept te schrijven.
 4. **Head tags + heuristiek**. `og:title` / `og:image`, en lijsten onder kopjes als
    "Ingrediënten" of "Bereiding".
 
+Zit de pagina achter een browsercontrole, van het soort dat een kaal verzoek met
+"Just a moment..." afwimpelt, dan laadt de app hem in een WebView, wacht tot de controle klaar
+is en leest daarna gewoon door. Meestal zie je daar niets van. Vraagt de controle om een tik,
+dan komt hij in beeld en tik je hem zelf af.
+
 Lukt niets, dan wordt de link alsnog bewaard met een titel uit de URL, en zegt de app dat eerlijk
 in plaats van een leeg recept te tonen. Je kunt dan alsnog het origineel openen, opnieuw proberen
 of het zelf invullen.

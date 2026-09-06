@@ -2,6 +2,9 @@
 
 `parse/RecipeParser.kt`. Puur: `parse(html, url) -> ParsedRecipe`. Geen netwerk, geen Android-API's.
 
+Het ophalen zit hier niet in. Dat doet `PageFetcher`, die ook de botcontroles voor zijn
+rekening neemt. Zie [fetching.md](fetching.md).
+
 ## Vier pogingen, beste wint
 
 1. **JSON-LD**. `schema.org/Recipe` in `<script type="application/ld+json">`.

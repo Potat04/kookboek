@@ -27,28 +27,30 @@ hem rechtstreeks; hij hoeft niet door de ViewModel heen. SharedPreferences en ni
 synchroon gelezen. Het zijn drie waarden en ze moeten er zijn vóór het eerste frame, anders is elke
 koude start één frame in het verkeerde palet.
 
-**`RecipeRepository`** is de enige plek die weet hoe je een recept binnenhaalt: URL normaliseren,
-dubbele detecteren, pagina ophalen, parsen, opslaan, plaatje ophalen. Geeft een `ImportResult`
-terug (`Saved` / `AlreadySaved` / `Failed`), nooit een exception naar de UI.
+**`RecipeRepository`** is de enige plek die weet hoe een import verloopt: URL normaliseren,
+dubbele detecteren, de pagina bij `PageFetcher` opvragen, parsen, opslaan, plaatje ophalen.
+Geeft een `ImportResult` terug (`Saved` / `AlreadySaved` / `Failed`), nooit een exception naar
+de UI.
 
 **`RecipeStore`** is Room erachter en een `StateFlow<List<Recipe>>` ervoor. Heeft ook
 `loaded: StateFlow<Boolean>`, want een lege lijst betekent twee heel verschillende dingen:
 "je hebt geen recepten" en "we hebben nog niet gekeken". De UI mag pas iets beweren als
 `loaded` waar is.
 
-**`PageFetcher`** haalt de HTML op, langs twee wegen. Eerst een gewoon HTTP-verzoek met Jsoup —
-dat is wat bijna elke site krijgt en het blijft de eerste poging. Komt daar een botcontrole terug
+**`PageFetcher`** haalt de HTML op, langs twee wegen. Eerst een gewoon HTTP-verzoek met Jsoup.
+Dat is wat bijna elke site krijgt en het blijft de eerste poging. Komt daar een botcontrole terug
 (`ChallengePage` herkent die), dan gaat dezelfde URL naar een WebView, want een echte Chromium
 komt er wél doorheen. De `cf_clearance` die de site daarna afgeeft blijft in de gedeelde
 `CookieManager` staan, dus het volgende recept van diezelfde site gaat weer over gewoon HTTP en
-`ImageStore` mag de foto ook ophalen.
+`ImageStore` mag de foto ook ophalen. Zie [fetching.md](fetching.md).
 
-**`ChallengeStage`** is het doorgeefluik tussen die WebView en het scherm dat vooraan staat. Een
-WebView die aan geen enkel venster hangt tekent geen frames, en zonder frames loopt de controle
-van Cloudflare eeuwig door — hij moet dus in de view-tree. Zie [gotchas.md](gotchas.md).
+**`ChallengeStage`** is het doorgeefluik tussen die WebView en het scherm dat vooraan staat.
+Niet omdat de controle een venster nodig heeft, want dat is nagemeten en dat hoeft niet, maar
+omdat een controle die om een tik vraagt iemand moet kunnen bereiken. Zie
+[gotchas.md](gotchas.md).
 
 **`RecipeParser`** is puur: HTML in, `ParsedRecipe` uit. Geen netwerk, geen Android. Daarom is
-het als enige laag echt te testen. Zie [parser.md](parser.md).
+het, met `ChallengePage`, de laag die echt te testen is. Zie [parser.md](parser.md).
 
 **`Recipe`** (in `data/Recipe.kt`) is het domeinmodel en het enige wat de UI kent. De Room-entities
 in `data/db/` zijn een opslagdetail; er lekt geen `RecipeEntity` naar boven.
@@ -80,6 +82,6 @@ het deelvenster over je browser zweeft in plaats van de hele app te openen.
 ## Wat er bewust niet is
 
 - Geen server, geen account, geen analytics. De app praat alleen met de site die je deelt.
-- Geen DI-container: één `Application` die drie objecten aanmaakt is genoeg.
+- Geen DI-container: één `Application` die een handvol objecten aanmaakt is genoeg.
 - Geen aparte `domain`-laag: de repository ís de use case.
 - Geen paging: honderden recepten passen prima in een `LazyColumn`.

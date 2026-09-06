@@ -14,6 +14,7 @@ verandert aan de build of de opslag, lees de betreffende pagina in `.claude/know
 |---|---|
 | Versies, AGP 9 eigenaardigheden, waarom de build zo staat | [build.md](.claude/knowledge/build.md) |
 | Lagen, datastromen, waar welke beslissing valt | [architecture.md](.claude/knowledge/architecture.md) |
+| Ophalen, botcontroles, de WebView | [fetching.md](.claude/knowledge/fetching.md) |
 | Hoe recepten van een pagina gelezen worden | [parser.md](.claude/knowledge/parser.md) |
 | Room-schema, migraties, afbeeldingen | [data.md](.claude/knowledge/data.md) |
 | De zes paletten, contrast-eisen, typografie, UX-regels | [ui.md](.claude/knowledge/ui.md) |
@@ -38,7 +39,8 @@ verandert aan de build of de opslag, lees de betreffende pagina in `.claude/know
 5. **Wijzig je een `@Entity`, dan hoort daar een migratie bij** en een opgehoogde
    `version` in `KookboekDatabase`. Zie [data.md](.claude/knowledge/data.md).
 6. **De parser wordt getest tegen echte opgeslagen pagina's**, niet tegen zelfverzonnen HTML.
-   Nieuwe site-ondersteuning = nieuwe fixture. Zie [testing.md](.claude/knowledge/testing.md).
+   Nieuwe site-ondersteuning = nieuwe fixture. Hetzelfde geldt voor `ChallengePage` en de
+   controlepagina's waar die op let. Zie [testing.md](.claude/knowledge/testing.md).
 7. **Eerst testen, dan pas installeren op een echt toestel.**
 
 ## Commando's
@@ -64,10 +66,10 @@ app/src/main/java/nl/potat04/kookboek/
   ShareActivity.kt      het venstertje dat over je browser verschijnt bij Delen
   data/
     Recipe.kt           het domeinmodel dat de UI kent
-    RecipeRepository.kt ophalen, importeren, verversen, verwijderen
+    RecipeRepository.kt importeren, verversen, verwijderen
     PageFetcher.kt      de HTML halen: eerst Jsoup, bij een botcontrole een WebView
     ChallengePage.kt    herkent een botcontrole, puur en getest tegen echte pagina's
-    ChallengeStage.kt   waar die WebView aan het scherm hangt dat vooraan staat
+    ChallengeStage.kt   waar die WebView staat zolang de controle loopt
     RecipeStore.kt      Room erachter, StateFlow ervoor
     ImageStore.kt       foto's downloaden, verkleinen, opruimen
     Settings.kt         welk palet, licht/donker, tekstgrootte
