@@ -80,6 +80,7 @@ fun FailureReason.text(): UiText = UiText.Res(
     when (this) {
         FailureReason.NO_VALID_LINK -> R.string.error_no_valid_link
         FailureReason.FETCH_FAILED -> R.string.error_fetch_failed
+        FailureReason.BLOCKED -> R.string.error_blocked
         FailureReason.NO_SOURCE_URL -> R.string.error_no_source_url
         FailureReason.NOTHING_SHARED -> R.string.error_nothing_shared
     }

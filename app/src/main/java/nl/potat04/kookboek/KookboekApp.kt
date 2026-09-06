@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import nl.potat04.kookboek.data.ImageStore
+import nl.potat04.kookboek.data.PageFetcher
 import nl.potat04.kookboek.data.RecipeRepository
 import nl.potat04.kookboek.data.RecipeStore
 import nl.potat04.kookboek.data.SettingsStore
@@ -30,7 +31,7 @@ class KookboekApp : Application() {
     override fun onCreate() {
         super.onCreate()
         settings = SettingsStore(this)
-        repository = RecipeRepository(RecipeStore(this, scope), ImageStore(this))
+        repository = RecipeRepository(RecipeStore(this, scope), ImageStore(this), PageFetcher(this))
         scope.launch { repository.load() }
 
         // The icon on the home screen follows the palette. Watching the flow rather than

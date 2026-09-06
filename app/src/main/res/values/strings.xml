@@ -117,6 +117,9 @@
 
     <string name="error_no_valid_link">No valid link found</string>
     <string name="error_fetch_failed">Could not fetch the page</string>
+    <string name="error_blocked">This site blocked the app. Open the page in your browser first, then share it again.</string>
+    <string name="challenge_title">This site is checking your browser</string>
+    <string name="challenge_body">Finish the check below and the recipe will be read straight after.</string>
     <string name="error_no_source_url">This recipe has no source link</string>
     <string name="error_nothing_shared">There was no link in that</string>
 
