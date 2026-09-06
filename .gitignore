@@ -22,3 +22,9 @@ keystore.properties
 # Agent config: the shared settings and knowledge base are committed on purpose,
 # personal overrides are not.
 .claude/settings.local.json
+
+app/release
+# Skills borrowed from elsewhere, kept out of the repo while we try them out.
+# Our own skills are listed below and stay committed.
+/.claude/skills/*
+!/.claude/skills/smoke-test/
