@@ -73,6 +73,41 @@ De tests legden het oude gedrag vast, dus die moesten mee.
 - **`ah.nl` blokkeert scrapers.** De opgeslagen fixture is een botblokkade-pagina en dient als
   test dat de app daar netjes mee omgaat in plaats van te crashen.
 
+## De botcontrole van Cloudflare
+
+Steeds meer receptsites antwoorden op een kaal verzoek met "Just a moment..." en geven de echte
+pagina alleen aan iets dat het controlescript uitvoert.
+
+**Een verzonnen `User-Agent` maakt het erger.** De app zette er een Chrome/125-string op terwijl de
+WebView zijn eigen `Sec-CH-UA` client hints bleef sturen, en zo'n edge vraagt daar met
+`Critical-CH` expliciet om. Een user agent die zijn eigen client hints tegenspreekt is een luider
+botsignaal dan helemaal geen vermomming: met de string erop bleef de controle hangen tot de
+time-out, eraf ging hij in twee seconden voorbij. `BrowserIdentity` vraagt daarom de WebView zelf
+wat hij heet, en Jsoup en `ImageStore` sturen datzelfde. Ze moeten wel: Cloudflare koppelt de
+`cf_clearance` aan de agent die hem verdiend heeft.
+
+Test dit op de emulator tegen Chrome ernaast. Faalt Chrome op dezelfde pagina ook, dan ligt het aan
+de emulator; komt Chrome er wel doorheen, dan ligt het aan jou.
+
+**De WebView hoeft nergens aan te hangen.** Dat is hier eerst anders opgeschreven, en dat was fout.
+Tijdens het zoeken naar de user-agent-bug leek het erop dat een losgekoppelde WebView geen frames
+tekent en de controle daarom eeuwig doorloopt. Nadat de user agent klopte is dat opnieuw gemeten met
+een WebView die aan niets hing: die kwam er gewoon doorheen. Mihon doet het ook zo — `createWebView`
+is daar niet meer dan `WebView(context)` met instellingen en een user agent, zonder afmeting of
+ouder. Eén oorzaak dus, niet twee. `ChallengeStage` en `ChallengeOverlay` blijven wél nodig, maar om
+een andere reden: een controle die om een tik vraagt moet iemand kúnnen aanraken.
+
+**Cloudflare zegt zelf wanneer het interactief wordt.** De challenge post een bericht
+(`source: "cloudflare-challenge"`, `event: "interactiveBegin"`). Daar luisteren is beter dan op de
+klok kijken: een trage automatische controle laat het scherm dan met rust, en eentje die een tik wil
+komt meteen in beeld. Overgenomen van Mihon, dat er de bypass op afbreekt; wij laten de pagina zien.
+De klok blijft als achtervang staan voor muren die niet van Cloudflare zijn.
+
+**`cf-mitigated: challenge` is de officiële manier om een controle te herkennen**, en Cloudflare
+documenteert dat ook zo. `ChallengePage` kijkt daar als eerste naar. In de body zoeken blijft nodig
+voor de hop ervóór: een site kan er zijn eigen JavaScript-redirect voor zetten, zonder
+Cloudflare-header.
+
 ## Kleur en contrast
 
 **Één kleur droeg élke samenvatting.** `InkMuted` hing aan zowel `onSurfaceVariant` als `secondary`

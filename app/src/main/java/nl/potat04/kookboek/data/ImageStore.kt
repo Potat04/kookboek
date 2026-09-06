@@ -21,6 +21,13 @@ class ImageStore(context: Context) {
 
     private val dir = File(context.filesDir, "images").apply { mkdirs() }
 
+    private val appContext = context.applicationContext
+
+    // The same agent PageFetcher fetches under, because a clearance cookie earned by one
+    // agent is not honoured for another. Worked out on first use, not at startup: asking
+    // for it loads the WebView, and most launches never download a thing.
+    private val userAgent: String get() = BrowserIdentity.userAgent(appContext)
+
     // A handful of decoded bitmaps; the list screen scrolls through thumbnails constantly.
     private val cache = object : LruCache<String, ImageBitmap>(24) {}
 
@@ -32,8 +39,10 @@ class ImageStore(context: Context) {
                 instanceFollowRedirects = true
                 connectTimeout = 15_000
                 readTimeout = 20_000
-                setRequestProperty("User-Agent", USER_AGENT)
+                setRequestProperty("User-Agent", userAgent)
                 setRequestProperty("Accept", "image/*,*/*;q=0.8")
+                // A site that made PageFetcher pass a bot check guards its pictures too.
+                SiteCookies.header(url)?.let { setRequestProperty("Cookie", it) }
             }
             val bytes = conn.use { it.inputStream.buffered().readBytes() }
             require(bytes.size in 1..MAX_BYTES) { "image is ${bytes.size} bytes" }
@@ -93,6 +102,7 @@ class ImageStore(context: Context) {
         try { block(this) } finally { disconnect() }
 
     companion object {
+        /** Only used when the device has no WebView to ask. See [BrowserIdentity]. */
         const val USER_AGENT =
             "Mozilla/5.0 (Linux; Android 14; Pixel) AppleWebKit/537.36 (KHTML, like Gecko) " +
                 "Chrome/125.0.0.0 Mobile Safari/537.36"

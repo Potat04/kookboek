@@ -6,7 +6,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
 import nl.potat04.kookboek.parse.ParsedRecipe
 import nl.potat04.kookboek.parse.RecipeParser
-import org.jsoup.Jsoup
 import java.net.URI
 import java.util.Locale
 
@@ -15,7 +14,7 @@ import java.util.Locale
  * no business knowing which language the reader picked, and a recipe imported today
  * may well be looked at in the other one tomorrow.
  */
-enum class FailureReason { NO_VALID_LINK, FETCH_FAILED, NO_SOURCE_URL, NOTHING_SHARED }
+enum class FailureReason { NO_VALID_LINK, FETCH_FAILED, BLOCKED, NO_SOURCE_URL, NOTHING_SHARED }
 
 sealed interface ImportResult {
     data class Saved(val recipe: Recipe) : ImportResult
@@ -26,6 +25,7 @@ sealed interface ImportResult {
 class RecipeRepository(
     private val store: RecipeStore,
     val images: ImageStore,
+    private val pages: PageFetcher,
 ) {
     val recipes: StateFlow<List<Recipe>> = store.recipes
     val loaded: StateFlow<Boolean> = store.loaded
@@ -58,8 +58,10 @@ class RecipeRepository(
 
         existingFor(url)?.let { return ImportResult.AlreadySaved(it) }
 
-        val parsed = fetchAndParse(url)
-            ?: return ImportResult.Failed(FailureReason.FETCH_FAILED, url)
+        val parsed = when (val fetched = fetchAndParse(url)) {
+            is Fetched.Parsed -> fetched.recipe
+            is Fetched.Failed -> return ImportResult.Failed(fetched.reason, url)
+        }
 
         val recipe = parsed.toRecipe(url)
         store.upsert(recipe)
@@ -77,8 +79,10 @@ class RecipeRepository(
     suspend fun refresh(recipe: Recipe): ImportResult {
         val url = recipe.sourceUrl
             ?: return ImportResult.Failed(FailureReason.NO_SOURCE_URL, null)
-        val parsed = fetchAndParse(url)
-            ?: return ImportResult.Failed(FailureReason.FETCH_FAILED, url)
+        val parsed = when (val fetched = fetchAndParse(url)) {
+            is Fetched.Parsed -> fetched.recipe
+            is Fetched.Failed -> return ImportResult.Failed(fetched.reason, url)
+        }
 
         val fresh = parsed.toRecipe(url).copy(
             id = recipe.id,
@@ -98,19 +102,23 @@ class RecipeRepository(
         return ImportResult.Saved(store.byId(recipe.id) ?: fresh)
     }
 
-    private suspend fun fetchAndParse(url: String): ParsedRecipe? = withContext(Dispatchers.IO) {
-        runCatching {
-            val doc = Jsoup.connect(url)
-                .userAgent(ImageStore.USER_AGENT)
-                .header("Accept-Language", acceptLanguage())
-                .followRedirects(true)
-                .ignoreHttpErrors(true)
-                .timeout(25_000)
-                .maxBodySize(6 * 1024 * 1024)
-                .get()
-            RecipeParser.parse(doc, url)
-        }.onFailure { Log.w(TAG, "fetch failed for $url", it) }.getOrNull()
+    /** A page that was read, or the reason it was not. */
+    private sealed interface Fetched {
+        data class Parsed(val recipe: ParsedRecipe) : Fetched
+        data class Failed(val reason: FailureReason) : Fetched
     }
+
+    private suspend fun fetchAndParse(url: String): Fetched =
+        when (val page = pages.fetch(url, acceptLanguage())) {
+            is FetchResult.Page -> withContext(Dispatchers.Default) {
+                Fetched.Parsed(RecipeParser.parse(page.html, url))
+            }
+            FetchResult.Blocked -> {
+                Log.w(TAG, "$url is behind a bot check we could not get past")
+                Fetched.Failed(FailureReason.BLOCKED)
+            }
+            FetchResult.Unreachable -> Fetched.Failed(FailureReason.FETCH_FAILED)
+        }
 
     private fun existingFor(url: String): Recipe? {
         val key = comparableUrl(url)
