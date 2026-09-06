@@ -1,18 +1,16 @@
 [versions]
-agp = "9.1.1"
-# Must match the Kotlin version bundled inside AGP (com.android.tools.build:gradle:9.1.1).
+agp = "9.4.0"
+# Must match the Kotlin version bundled inside AGP (com.android.tools.build:gradle:9.4.0).
 kotlin = "2.2.10"
 coreKtx = "1.19.0"
 junit = "4.13.2"
 junitVersion = "1.3.0"
 espressoCore = "3.7.0"
-appcompat = "1.6.1"
-material = "1.10.0"
 activityCompose = "1.13.0"
-composeBom = "2026.02.01"
+composeBom = "2026.08.00"
 lifecycle = "2.11.0"
-navigationCompose = "2.9.8"
-jsoup = "1.23.1"
+navigationCompose = "2.10.0"
+jsoup = "1.23.2"
 kotlinxSerialization = "1.11.0"
 # KSP releases are pinned to an exact Kotlin version — this one must stay on 2.2.10.
 ksp = "2.2.10-2.0.2"
@@ -23,8 +21,6 @@ androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = 
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
-androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
-material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
