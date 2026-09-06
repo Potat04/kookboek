@@ -1,4 +1,4 @@
-# Kookboek — instructies voor agents
+# Werken aan Kookboek
 
 Android-app (Kotlin, Compose, Room). Je deelt een recept vanuit je browser, de app leest het
 van de pagina en bewaart het offline. Eén module: `:app`, package `nl.potat04.kookboek`.
@@ -31,7 +31,7 @@ verandert aan de build of de opslag, lees de betreffende pagina in `.claude/know
 3. **Geen zichtbare tekst in Kotlin.** De app spreekt Nederlands en Engels: alles staat in
    `res/values/strings.xml` (Engels, en de fallback voor elke taal die de app niet heeft) en
    `res/values-nl/strings.xml`, sleutel voor sleutel gelijk. Ook foutmeldingen en
-   `contentDescription`. Lever je een string, lever dan beide — `StringResourcesTest` faalt anders.
+   `contentDescription`. Lever je een string, lever dan beide, anders faalt `StringResourcesTest`.
    Code, commentaar en commits zijn Engels. Zie [localization.md](.claude/knowledge/localization.md).
 4. **`keystore.properties` en `*.jks` gaan nooit de repo in.** Staan in `.gitignore`. Niet
    opnemen in output, niet loggen, niet naar buiten sturen.
@@ -63,7 +63,7 @@ app/src/main/java/nl/potat04/kookboek/
   MainActivity.kt       de app zelf (Compose, navigatie)
   ShareActivity.kt      het venstertje dat over je browser verschijnt bij Delen
   data/
-    Recipe.kt           het domeinmodel — dit is wat de UI kent
+    Recipe.kt           het domeinmodel dat de UI kent
     RecipeRepository.kt ophalen, importeren, verversen, verwijderen
     RecipeStore.kt      Room erachter, StateFlow ervoor
     ImageStore.kt       foto's downloaden, verkleinen, opruimen
@@ -81,7 +81,7 @@ app/src/main/java/nl/potat04/kookboek/
     theme/Palettes.kt   de zes paletten, contrast-gecontroleerd
     ...                 overige schermen en sheets
 app/src/main/res/
-  values/strings.xml    Engels — het ongekwalificeerde bestand, dus ook de fallback
+  values/strings.xml    Engels, ongekwalificeerd, dus ook de fallback
   values-nl/strings.xml Nederlands, sleutel voor sleutel gelijk
 app/src/test/           unit tests + opgeslagen pagina's als fixtures
 app/schemas/            Room-schema, ingecheckt voor toekomstige migraties

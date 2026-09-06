@@ -1,7 +1,7 @@
 # Kookboek
 
 Een receptenboek op je telefoon. Vind je een recept in je browser, tik je op **Delen → Kookboek**,
-en de app leest het recept van de pagina en bewaart het — tekst én foto — lokaal op je toestel.
+en de app leest het recept van de pagina en bewaart het lokaal op je toestel, tekst én foto.
 Ook als de site later achter een paywall verdwijnt of offline gaat, staat het recept er nog.
 
 Alles is offline. Geen account, geen server, geen tracking.
@@ -19,11 +19,11 @@ recept te schrijven.
 
 `RecipeParser` probeert vier dingen, in volgorde van betrouwbaarheid, en houdt het beste resultaat:
 
-1. **JSON-LD** — `schema.org/Recipe`, wat de meeste receptsites en foodblogs publiceren.
+1. **JSON-LD**. `schema.org/Recipe`, wat de meeste receptsites en foodblogs publiceren.
    Inclusief `@graph`, geneste arrays, `HowToSection` en instructies die als één HTML-blob komen.
-2. **Microdata** — hetzelfde schema, maar in `itemprop`-attributen.
-3. **Bekende receptplugins** — WP Recipe Maker, Tasty Recipes, Mediavine Create.
-4. **Head tags + heuristiek** — `og:title` / `og:image`, en lijsten onder kopjes als
+2. **Microdata**. Hetzelfde schema, maar in `itemprop`-attributen.
+3. **Bekende receptplugins**. WP Recipe Maker, Tasty Recipes, Mediavine Create.
+4. **Head tags + heuristiek**. `og:title` / `og:image`, en lijsten onder kopjes als
    "Ingrediënten" of "Bereiding".
 
 Lukt niets, dan wordt de link alsnog bewaard met een titel uit de URL, en zegt de app dat eerlijk
@@ -32,12 +32,12 @@ of het zelf invullen.
 
 ## Waar je spullen staan
 
-- `databases/kookboek.db` — SQLite via Room, met drie tabellen:
-  - `recipes` — de losse velden (titel, bron, tijd, porties, notities, favoriet).
-  - `ingredients` en `steps` — één rij per regel, met `position` voor de volgorde en
+- `databases/kookboek.db` is SQLite via Room, met drie tabellen:
+  - `recipes` heeft de losse velden (titel, bron, tijd, porties, notities, favoriet).
+  - `ingredients` en `steps` houden één rij per regel, met `position` voor de volgorde en
     `checked` voor het afvinken. Verwijder je een recept, dan ruimt een foreign key met
     `ON DELETE CASCADE` de bijbehorende regels mee op.
-- `filesDir/images/<id>.jpg` — de foto's, verkleind naar max ~1400px bij het importeren.
+- `filesDir/images/<id>.jpg` zijn de foto's, verkleind naar max ~1400px bij het importeren.
 
 Een notitie schrijven of één regel afvinken raakt zo één rij, in plaats van de hele collectie
 opnieuw weg te schrijven. Zoeken op ingrediënt is een join en geen scan door alles heen.
@@ -65,5 +65,5 @@ prijsgeeft). "Werkt op mijn zelfgeschreven HTML" zegt namelijk niets over het ec
 
 - Geen eigen foto's kiezen bij een handgeschreven recept.
 - Geen boodschappenlijst over meerdere recepten.
-- Alleen `text/plain` in het deelmenu — dat is wat browsers sturen, en zo blijft Kookboek uit
+- Alleen `text/plain` in het deelmenu. Dat is wat browsers sturen, en zo blijft Kookboek uit
   ieder ander deelmenu op je telefoon.

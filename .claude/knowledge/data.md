@@ -43,7 +43,7 @@ door thumbnails.
 
 **Verwijderen laat de foto met opzet staan.** Anders kan "ongedaan maken" het recept niet compleet
 terugzetten. `pruneOrphans()` draait bij het opstarten en ruimt op wat door geen enkel recept meer
-wordt aangewezen — met een marge van tien minuten, zodat een import die nú loopt niet zijn eigen
+wordt aangewezen, met een marge van tien minuten, zodat een import die nú loopt niet zijn eigen
 net gedownloade plaatje kwijtraakt.
 
 ## Backup

@@ -22,8 +22,8 @@ Dan de build die je wilt testen. Debug voor gewoon werk:
 ./gradlew :app:assembleDebug
 ```
 
-Ging het over R8, keep-rules, de keystore of een uitgave, dan test je de **release**-APK —
-minificatiefouten zie je niet in debug:
+Ging het over R8, keep-rules, de keystore of een uitgave, dan test je de **release**-APK.
+Minificatiefouten zie je niet in debug:
 
 ```bash
 ./gradlew :app:assembleRelease
@@ -62,9 +62,9 @@ adb shell am start -a android.intent.action.SEND -t text/plain --es android.inte
 
 Goede testlinks, elk met een ander soort pagina:
 
-- `https://www.leukerecepten.nl/recepten/loempia-maken-in-de-airfryer/` — JSON-LD met secties
-- `https://www.cheffatty.com/recipes/chili-crisp-scallion-oil-noodles` — Engels, foto
-- `https://www.ah.nl/allerhande/recept/R-R1197438/pasta-pesto-met-kip` — blokkeert scrapers,
+- `https://www.leukerecepten.nl/recepten/loempia-maken-in-de-airfryer/` levert JSON-LD met secties
+- `https://www.cheffatty.com/recipes/chili-crisp-scallion-oil-noodles` is Engels, met foto
+- `https://www.ah.nl/allerhande/recept/R-R1197438/pasta-pesto-met-kip` blokkeert scrapers en
   moet netjes falen met een bewaarde link
 
 De app zelf openen:
@@ -79,7 +79,7 @@ adb shell am start -n nl.potat04.kookboek/.MainActivity
 adb exec-out screencap -p > screen.png
 ```
 
-Lees de screenshot ook echt terug — "geen crash" is niet hetzelfde als "het ziet er goed uit".
+Lees de screenshot ook echt terug. "Geen crash" is niet hetzelfde als "het ziet er goed uit".
 Controleer minstens: is de tekst Nederlands, klopt het aantal ingrediënten en stappen, staat de
 foto er, en is de lege staat niet zichtbaar terwijl er wel recepten zijn.
 
@@ -99,4 +99,4 @@ De emulator blijft anders CPU en geheugen opeten.
 
 ## Volgorde
 
-Emulator eerst, echt toestel daarna — en alleen als daarom gevraagd is.
+Emulator eerst, echt toestel daarna, en alleen als daarom gevraagd is.

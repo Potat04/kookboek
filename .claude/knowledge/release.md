@@ -14,7 +14,7 @@ keyPassword=…
 De keystore staat **buiten de repo**, in `~/.android-keystores/`. `keystore.properties`, `*.jks`
 en `*.keystore` staan in `.gitignore`.
 
-Ontbreekt `keystore.properties`, dan bouwt en test alles gewoon door — alleen `release` komt er
+Ontbreekt `keystore.properties`, dan bouwt en test alles gewoon door. Alleen `release` komt er
 dan ongesigneerd uit. Iemand anders kan het project dus zonder sleutel gebruiken.
 
 ## Regels rond de sleutel
@@ -22,7 +22,7 @@ dan ongesigneerd uit. Iemand anders kan het project dus zonder sleutel gebruiken
 - **Nooit in de repo, nooit in output, nooit in een log of transcript.** Wie de sleutel heeft, kan
   updates uitbrengen alsof hij jij is.
 - **Nooit vervangen of opnieuw genereren** zonder dat de eigenaar het expliciet vraagt. Raakt de
-  sleutel kwijt, dan kan die app-installatie nooit meer geüpdatet worden — dan moet er een nieuwe
+  sleutel kwijt, dan kan die app-installatie nooit meer geüpdatet worden. Dan moet er een nieuwe
   `applicationId` komen en installeert iedereen opnieuw.
 - De sleutel is 27 jaar geldig (10.000 dagen), zoals Play verlangt.
 - Wachtwoorden staan alleen in `keystore.properties` op de machine zelf. Lees ze niet uit en
@@ -34,7 +34,7 @@ dan ongesigneerd uit. Iemand anders kan het project dus zonder sleutel gebruiken
 ./gradlew :app:bundleRelease
 ```
 
-Levert `app/build/outputs/bundle/release/app-release.aab` — het formaat dat Play wil.
+Levert `app/build/outputs/bundle/release/app-release.aab`, het formaat dat Play wil.
 
 Voor installeren op een toestel of testen op de emulator wil je een APK:
 

@@ -5,7 +5,7 @@ Gradle 9.7.1 · AGP 9.4.0 · Java 21 · compileSdk 37.1 · minSdk 33 · targetSd
 ## Het versietouwtje
 
 AGP 9 heeft **Kotlin ingebouwd**. `com.android.application` zet zelf al een Kotlin Gradle Plugin
-op de classpath — welke versie dat is, staat in de POM van `com.android.tools.build:gradle`.
+op de classpath. Welke versie dat is, staat in de POM van `com.android.tools.build:gradle`.
 Voor AGP 9.4.0 is dat **Kotlin 2.2.10**. AGP 9.1.1 t/m 9.4.0 zitten allemaal op die versie,
 dus een AGP-bump betekent niet automatisch een Kotlin-bump.
 
@@ -49,7 +49,7 @@ Weghalen mag pas als KSP overstapt op `android.sourceSets`.
 
 `androidx.core:core-ktx:1.19.0` en `lifecycle:2.11.0` eisen API 37. Bij 36 krijg je
 "Dependency requires libraries and applications that depend on it to compile against version 37
-or later". `targetSdk` mag op 36 blijven — dat is een andere knop en verandert runtime-gedrag.
+or later". `targetSdk` mag op 36 blijven. Dat is een andere knop en verandert runtime-gedrag.
 
 AGP 9 schrijft compileSdk als een blok, niet als een getal:
 
@@ -80,7 +80,7 @@ Er zit geen `appcompat` of `com.google.android.material` in het project. Ze ston
 in `libs.versions.toml` zonder dat iets ze gebruikte; dat leverde alleen Dependabot-PR's op en
 is eruit gehaald. `res/values/themes.xml`
 erft daarom van `android:Theme.Material.Light.NoActionBar`, niet van `Theme.MaterialComponents.*`.
-Zet je die dependencies terug, dan pas je het thema aan — en niet andersom, want dat trekt een
+Zet je die dependencies terug, dan pas je het thema aan, en niet andersom, want dat trekt een
 heel View-framework binnen dat verder nergens voor gebruikt wordt.
 
 ## Signeren

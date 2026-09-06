@@ -6,7 +6,7 @@ Een logboek van dingen die tijd hebben gekost, zodat het niet twee keer hoeft.
 
 **`org.jetbrains.kotlin.android` toevoegen faalt.** AGP 9 heeft Kotlin ingebouwd; de plugin zit al
 op de classpath "with an unknown version". Niet toevoegen. Compose- en serialization-plugin zijn
-wél losse artefacten en moeten juist mét een expliciete versie aangevraagd worden — dezelfde
+wél losse artefacten en moeten juist mét een expliciete versie aangevraagd worden, en wel dezelfde
 versie als de Kotlin die AGP meebrengt (2.2.10).
 
 **KSP compileert niet zonder `android.disallowKotlinSourceSets=false`.** AGP 9 weigert source sets
@@ -29,15 +29,15 @@ tekens gingen stuk bij het kopiëren.
 **`List` heeft al `component1()` t/m `component5()`.** Zelf een `component4()` schrijven voor
 destructuring geeft een redeclaratie-conflict.
 
-**Een launcher-icoon volgt geen thema — een `activity-alias` wel.** Android kiest het app-icoon uit
+**Een launcher-icoon volgt geen thema, een `activity-alias` wel.** Android kiest het app-icoon uit
 de manifest voordat er code draait, dus tinten kan niet. Het gaat via één alias per palet met
 precies één ingeschakeld; zie [ui.md](ui.md). Nul ingeschakeld haalt de app van je beginscherm af,
-en de launcher cachet het icoon — controleer met `cmd package resolve-activity`, niet met je ogen.
+en de launcher cachet het icoon. Controleer met `cmd package resolve-activity`, niet met je ogen.
 
 **Een alias uitzetten gooit de tasks weg die erin geworteld zijn.** Dit koste twee pogingen. Zet je
 het alias om waarmee de lezer de app geopend heeft, dan verwijdert Android zijn hele task: de app
 zakt naar de achtergrond en zijn kaart is uit het app-overzicht verdwenen. `DONT_KILL_APP` helpt
-niet — dat gaat over het proces, niet over de task. Het uitstellen tot de app van het scherm is
+niet. Dat gaat over het proces, niet over de task. Het uitstellen tot de app van het scherm is
 helpt óók niet, het verschuift alleen wanneer je het ziet (en dan schrik je in het overzicht).
 
 De oplossing is dat het alias nooit de wortel van je task mag zijn: de aliassen wijzen naar
@@ -46,13 +46,13 @@ De oplossing is dat het alias nooit de wortel van je task mag zijn: de aliassen 
 
 Merk op waarom ik dit eerst niet zag: ik startte de app in mijn tests met
 `am start -n .../.MainActivity`, en dán is de task in `MainActivity` geworteld en gebeurt er niets.
-Start bij dit soort werk zoals een gebruiker start — `monkey -p <pkg> -c android.intent.category.LAUNCHER 1`
-of `am start -n <pkg>/.LauncherSinaasappel` — en controleer met `dumpsys window | grep mCurrentFocus`
+Start bij dit soort werk zoals een gebruiker start, met `monkey -p <pkg> -c android.intent.category.LAUNCHER 1`
+of `am start -n <pkg>/.LauncherSinaasappel`, en controleer met `dumpsys window | grep mCurrentFocus`
 waar je task op staat.
 
 **Een `onClick`-parameter is geen `clickable`.** De palet-swatches op het instellingenscherm kregen
 netjes een `onClick` doorgegeven die nergens aan een modifier hing. Het compileert, het ziet er goed
-uit, en zes van de vier keuzes doen niets. Alleen zichtbaar door de app echt aan te tikken — geen
+uit, en zes van de vier keuzes doen niets. Alleen zichtbaar door de app echt aan te tikken. Geen
 test en geen review vond dit. Gebruik `selectable(selected, onClick)` voor één keuze uit een groep,
 dan staat de semantiek er ook goed in.
 
@@ -76,7 +76,7 @@ De tests legden het oude gedrag vast, dus die moesten mee.
 ## Kleur en contrast
 
 **Één kleur droeg élke samenvatting.** `InkMuted` hing aan zowel `onSurfaceVariant` als `secondary`
-en kwam op licht papier niet boven 5.6:1 — en stond juist op de kleinste maten met de breedste
+en kwam op licht papier niet boven 5.6:1, en stond juist op de kleinste maten met de breedste
 letterspatiëring. Contrast en formaat faalden op dezelfde plekken, en dat leest als "vaag" in plaats
 van als "te klein" of "te licht". Als iemand zegt dat tekst slecht leesbaar is: kijk eerst welke
 rol die tekst draagt en waar diezelfde rol nog meer opduikt.
@@ -98,4 +98,4 @@ daartegen narekenen, niet tegen de vlakke achtergrondkleur.
 
 **Zwart scherm na verwijderen.** Het receptscherm bleef staan nadat het recept weg was, met alleen
 de snackbar erover. Het detailscherm moet zichzelf sluiten zodra het recept dat het toont
-verdwijnt — en dat mag pas als `loaded` waar is, anders sluit het al tijdens het opstarten.
+verdwijnt, en dat mag pas als `loaded` waar is, anders sluit het al tijdens het opstarten.

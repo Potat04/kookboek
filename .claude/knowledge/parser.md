@@ -4,10 +4,10 @@
 
 ## Vier pogingen, beste wint
 
-1. **JSON-LD** — `schema.org/Recipe` in `<script type="application/ld+json">`.
-2. **Microdata** — hetzelfde schema in `itemprop`-attributen.
-3. **Bekende receptplugins** — WP Recipe Maker, Tasty Recipes, Mediavine Create.
-4. **Head tags + heuristiek** — `og:title`/`og:image`, plus lijsten onder kopjes als
+1. **JSON-LD**. `schema.org/Recipe` in `<script type="application/ld+json">`.
+2. **Microdata**. Hetzelfde schema in `itemprop`-attributen.
+3. **Bekende receptplugins**. WP Recipe Maker, Tasty Recipes, Mediavine Create.
+4. **Head tags + heuristiek**. `og:title`/`og:image`, plus lijsten onder kopjes als
    "Ingrediënten" of "Bereiding".
 
 Levert stap 1 een volledig recept (ingrediënten én stappen), dan stopt het daar. Anders worden de
@@ -27,21 +27,21 @@ echt aangetroffen en wordt afgevangen:
   De beschrijvende variant wint, want "15 stuks" zegt meer dan "15".
 - `recipeInstructions` als platte string, als HTML-blob in één string, als lijst van `HowToStep`,
   of als lijst van `HowToSection` met geneste `itemListElement`. Alles wordt platgeslagen naar
-  `List<Step>`, waarbij de sectienaam bewaard blijft — tenzij álle stappen dezelfde sectie hebben,
+  `List<Step>`, waarbij de sectienaam bewaard blijft, tenzij álle stappen dezelfde sectie hebben,
   want dan zegt die niets meer.
 - `HowToStep` met de echte tekst in `text` en `"Stap 1"` in `name`. `text` wint.
 - ISO-durations met dagen erin: `P0DT0H30M`. En `PT0M` betekent "onbekend", niet "nul minuten".
 - Het recept verstopt in een `@graph`, of in een array, of genest in een ander object.
 - Kapotte JSON-LD. Wordt overgeslagen, de rest van de pagina gaat gewoon door.
-- Nummering die de site zelf al in de stap heeft gezet (`"1. Snijd de ui"`) — die gaat eruit,
+- Nummering die de site zelf al in de stap heeft gezet (`"1. Snijd de ui"`) gaat eruit,
   want de app nummert zelf.
 
 ## De porties-tekst
 
-`descriptiveYield()` houdt alleen wat méér zegt dan een getal: "15 stuks", "1 loaf", "24 koekjes"
-— dat is informatie die je niet moet weggooien. Een kale portie-telling ("4 persons", "Serves 6",
-"4 porties") wordt weggegooid; het getal staat al in `servings` en het scherm verwoordt het in de
-taal die aan staat.
+`descriptiveYield()` houdt alleen wat méér zegt dan een getal. "15 stuks", "1 loaf" en
+"24 koekjes" zijn informatie die je niet moet weggooien. Een kale portie-telling ("4 persons",
+"Serves 6", "4 porties") wordt weggegooid. Het getal staat al in `servings` en het scherm
+verwoordt het in de taal die aan staat.
 
 Dit deed vroeger het omgekeerde: `localizeYield()` herschreef "4 servings" naar "4 porties" vóór
 het opslaan. Prima toen de app alleen Nederlands sprak, maar het zette één taal vast in de database
@@ -57,5 +57,5 @@ parser aanraakt. Zie [testing.md](testing.md). De verleiding om "even snel" een 
 voegen zonder fixture is precies hoe deze laag onbetrouwbaar wordt.
 
 Let op bij het bewerken van dit bestand: `clean()` gebruikt een regex met unicode-escapes
-(` `, `​`, `﻿`) in plaats van letterlijke tekens. Dat is bewust — onzichtbare
+(` `, `​`, `﻿`) in plaats van letterlijke tekens. Dat is bewust. Onzichtbare
 tekens in de source overleven kopiëren en plakken niet.

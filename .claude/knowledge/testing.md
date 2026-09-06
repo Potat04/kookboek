@@ -6,9 +6,9 @@
 
 Drie testklassen, allemaal zonder Android-runtime:
 
-- `RecipeParserTest` — de parser tegen echte, opgeslagen pagina's.
-- `ScalingTest` — porties omrekenen.
-- `StringResourcesTest` — `values/` (Engels, de fallback) en `values-nl/` naast elkaar: dezelfde
+- `RecipeParserTest` draait de parser tegen echte, opgeslagen pagina's.
+- `ScalingTest` rekent porties om.
+- `StringResourcesTest` legt `values/` (Engels, de fallback) en `values-nl/` naast elkaar: dezelfde
   sleutels, hetzelfde soort, dezelfde meervoudsvormen, dezelfde placeholders. Die laatste is de
   enige die écht crasht op een toestel, en geen compiler ziet hem.
 
@@ -16,7 +16,8 @@ Drie testklassen, allemaal zonder Android-runtime:
 
 `app/src/test/resources/fixtures/` bevat opgeslagen pagina's van leukerecepten.nl, cheffatty.com,
 24kitchen.nl, bbcgoodfood.com en één pagina die helemaal geen receptdata prijsgeeft (ah.nl, die
-een botblokkade teruggeeft — de test controleert dat de app dan alsnog netjes iets bruikbaars maakt).
+een botblokkade teruggeeft). De test controleert dat de app daar alsnog netjes iets
+bruikbaars van maakt.
 
 "Werkt op mijn zelfgeschreven HTML" zegt niets over het echte web. Daarom draaien de tests tegen
 wat sites daadwerkelijk uitleveren.
@@ -33,7 +34,7 @@ wat sites daadwerkelijk uitleveren.
 
 Let op bij het ophalen: de Python op deze machine heeft geen werkende CA-bundle, dus
 `urllib` valt over verlopen certificaten. Voor het binnenhalen van een fixture is een
-unverified SSL-context acceptabel — het is publieke HTML voor lokaal testmateriaal. In de app
+unverified SSL-context acceptabel. Het is publieke HTML voor lokaal testmateriaal. In de app
 zelf speelt dit niet: Android gebruikt zijn eigen truststore.
 
 ## De deel-flow echt uitproberen
@@ -78,7 +79,7 @@ cachet het icoon, dus visueel loopt het achter terwijl de instelling al om is.
 adb -s emulator-5554 shell cmd package resolve-activity --brief -c android.intent.category.LAUNCHER nl.potat04.kookboek
 ```
 
-En of er precies één alias aan staat — nul betekent dat de app van het beginscherm verdwenen is:
+En of er precies één alias aan staat. Nul betekent dat de app van het beginscherm verdwenen is:
 
 ```bash
 adb -s emulator-5554 shell dumpsys package nl.potat04.kookboek | grep -A8 disabledComponents
@@ -87,14 +88,14 @@ adb -s emulator-5554 shell dumpsys package nl.potat04.kookboek | grep -A8 disabl
 Let op dat de reconcile bij het opstarten in een coroutine loopt: vraag je het direct na
 `am start`, dan kun je de oude waarde nog zien.
 
-De taal omzetten zonder te tikken — dit is exact wat het instellingenscherm doet:
+De taal omzetten zonder te tikken. Dit is exact wat het instellingenscherm doet:
 
 ```bash
 adb shell cmd locale set-app-locales nl.potat04.kookboek --locales en
 ```
 
-**Geef altijd `-s` mee.** Er hangt vaak ook een echt toestel aan de USB. Valt de emulator om — dat
-gebeurt — dan kiest `adb` stilletjes het andere toestel en installeer je zonder het te merken op een
+**Geef altijd `-s` mee.** Er hangt vaak ook een echt toestel aan de USB. Valt de emulator om, en dat
+gebeurt, dan kiest `adb` stilletjes het andere toestel en installeer je zonder het te merken op een
 telefoon. Zoek eerst de serial op en gebruik die overal:
 
 ```bash
@@ -106,14 +107,14 @@ verder gaat.
 
 Let op bij `adb shell input`: een `swipe` die dicht bij de onderrand begint wordt door het systeem
 als navigatiegebaar opgevat en gooit je uit de app. En een `tap` direct na `am start` of tijdens een
-navigatie-animatie landt op het verkeerde scherm — maak eerst een screenshot om te zien waar je
+navigatie-animatie landt op het verkeerde scherm. Maak eerst een screenshot om te zien waar je
 bent. Dat de paletkeuzes niet aanklikbaar waren, is precies zo aan het licht gekomen.
 
 De instellingen staan in SharedPreferences en overleven `adb install -r`. Wil je een schone start
-zonder je recepten te verliezen, zet ze dan terug via het instellingenscherm — `pm clear` gooit ook
+zonder je recepten te verliezen, zet ze dan terug via het instellingenscherm. `pm clear` gooit ook
 de recepten weg.
 
-Draait de release-build met R8 aan, test dan de **release-APK** en niet alleen debug — een
+Draait de release-build met R8 aan, test dan de **release-APK** en niet alleen debug. Een
 kapotte keep-rule merk je pas als de app na minificatie crasht. Zie [release.md](release.md).
 
 Zet de emulator na afloop weer uit (`adb emu kill`); hij blijft anders CPU en geheugen opeten.
