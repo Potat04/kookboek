@@ -14,13 +14,18 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.currentStateAsState
 import nl.potat04.kookboek.R
 import nl.potat04.kookboek.data.ChallengeStage
 
@@ -29,6 +34,11 @@ import nl.potat04.kookboek.data.ChallengeStage
  *
  * Every screen that can start an import puts this at the top of its content. It is
  * nothing at all until a site asks for a check.
+ *
+ * More than one of those screens can be alive at once: the share sheet is transparent, so
+ * the library keeps composing underneath it. Only the resumed one draws the check, which
+ * is both the one a tap can reach and the only way to keep a single WebView out of two
+ * view trees. [ChallengeStage.claim] hands it over.
  *
  * Out of sight is the normal case and lasts a second or two. The WebView sits in a
  * zero-sized clipping box, showing nothing and catching none of the taps meant for the
@@ -41,7 +51,16 @@ import nl.potat04.kookboek.data.ChallengeStage
  */
 @Composable
 fun ChallengeOverlay() {
+    val token = remember { Any() }
+    val lifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateAsState()
+    DisposableEffect(lifecycleState) {
+        if (lifecycleState.isAtLeast(Lifecycle.State.RESUMED)) ChallengeStage.claim(token)
+        onDispose { ChallengeStage.release(token) }
+    }
+
+    val host by ChallengeStage.host.collectAsStateWithLifecycle()
     val staged by ChallengeStage.current.collectAsStateWithLifecycle()
+    if (host !== token) return
     val challenge = staged ?: return
     val visible = challenge.visible
 
@@ -62,10 +81,11 @@ fun ChallengeOverlay() {
                 }
             }
         }
-        // One call site on purpose: moving the WebView between two of them would hand
-        // AndroidView a view that still has a parent.
+        // The claim above is what keeps this to one live call site. Detaching first
+        // covers the handover, which takes a frame or two, because AndroidView throws on
+        // a child that still has a parent.
         AndroidView(
-            factory = { challenge.web },
+            factory = { challenge.web.also { web -> (web.parent as? ViewGroup)?.removeView(web) } },
             modifier = if (visible) {
                 Modifier.fillMaxSize().systemBarsPadding().padding(top = 110.dp)
             } else {

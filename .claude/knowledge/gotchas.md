@@ -80,16 +80,55 @@ De tests legden het oude gedrag vast, dus die moesten mee.
 Steeds meer receptsites antwoorden op een kaal verzoek met "Just a moment..." en geven de echte
 pagina alleen aan iets dat het controlescript uitvoert.
 
-**Een verzonnen `User-Agent` maakt het erger.** De app zette er een Chrome/125-string op terwijl de
-WebView zijn eigen `Sec-CH-UA` client hints bleef sturen, en zo'n edge vraagt daar met
-`Critical-CH` expliciet om. Een user agent die zijn eigen client hints tegenspreekt is een luider
-botsignaal dan helemaal geen vermomming: met de string erop bleef de controle hangen tot de
-time-out, eraf ging hij in twee seconden voorbij. `BrowserIdentity` vraagt daarom de WebView zelf
-wat hij heet, en Jsoup en `ImageStore` sturen datzelfde. Ze moeten wel: Cloudflare koppelt de
-`cf_clearance` aan de agent die hem verdiend heeft.
+**Een `User-Agent` alleen aanpassen maakt het erger.** De app zette er ooit een Chrome/125-string
+op terwijl de WebView zijn eigen `Sec-CH-UA` client hints bleef sturen, en zo'n edge vraagt daar
+met `Critical-CH` expliciet om. Een user agent die zijn eigen client hints tegenspreekt is een
+luider botsignaal dan helemaal geen vermomming. Met de string erop bleef de controle hangen tot de
+time-out, eraf ging hij in twee seconden voorbij.
+
+**Maar helemaal niet vermommen werkt ook niet, en dat is later pas gebleken.** De conclusie die
+uit die meting getrokken werd, de WebView gewoon zichzelf laten zijn, hield het bij de lichte
+Turnstile-controles waar toen tegenaan gekeken werd. Bij een managed challenge houdt het op. De
+standaard user agent van een WebView draagt `; wv)` en `Version/4.0`, en zijn client hints noemen
+het merk "Android WebView". Dat is twee keer hardop zeggen dat je een ingebouwde browser bent.
+
+De uitweg is de string vermommen én de hints erbij rechtzetten. `ChromeUserAgent` haalt de twee
+verklikkers eruit en zet het toestelmodel op dezelfde "Android 10; K" die Chrome zelf stuurt. Het
+Chrome-versienummer blijft precies wat het toestel opgaf, want daar moeten de hints op aansluiten.
+`BrowserIdentity.disguise` zet die string op de WebView en herschrijft daarna via
+`androidx.webkit` de merkenlijst, "Android WebView" wordt "Google Chrome" op diezelfde versie.
+Mihon doet het zo, in `WebViewUtil.setUserAgent`, en zijn extensies komen daar wel mee langs.
+
+Jsoup en `ImageStore` sturen dezelfde string. Ze moeten wel: Cloudflare koppelt de `cf_clearance`
+aan de agent die hem verdiend heeft.
 
 Test dit op de emulator tegen Chrome ernaast. Faalt Chrome op dezelfde pagina ook, dan ligt het aan
 de emulator; komt Chrome er wel doorheen, dan ligt het aan jou.
+
+**De controle spreekt de taal van de lezer, en op de titel letten werkt dan niet.** Wat Cloudflare
+over de lijn stuurt heet altijd "Just a moment...", maar zodra het challenge-script gedraaid heeft
+schrijft het de titel om naar de taal van het toestel. Op een Nederlandse telefoon staat er "Even
+geduld...". `ChallengePage` keek naar Engelse titels, zag niets, en gaf een muur van 28 KB door als
+pagina. Er werd dan netjes een recept bewaard met alleen de link erin, zonder één foutregel in het
+log.
+
+Dit is precies waarom de emulator hier niets van liet zien: die staat in het Engels en de titel
+klopte daar wel. Test dit soort dingen op een toestel dat Nederlands spreekt.
+
+De uitweg is niet meer titels toevoegen, want dat rijtje eindigt nooit. `cf_chl_opt` en `__cf_chl`
+staan alleen in de interstitial van Cloudflare zelf, in elke taal, en niet in de Turnstile-widget
+die een site op zijn reactieformulier mag zetten. Die twee tellen daarom op zichzelf. De fixture
+`challenge-rendered-localised.html` is de echte uitgelezen DOM van dat toestel.
+
+**Twee schermen die dezelfde WebView willen tekenen laten de app crashen.** `ShareActivity` is
+doorzichtig, dus `MainActivity` blijft eronder gestart en blijft componeren. Allebei riepen ze
+`ChallengeOverlay` aan, allebei kregen ze dezelfde WebView, en de tweede `AndroidView` gooide
+`IllegalStateException: The specified child already has a parent`. De deel-sheet verdween dan
+zonder foutmelding en zonder recept, met alleen een botcontrole-regel in het log.
+
+Het viel lang niet op omdat het alleen gebeurt als de bibliotheek al open is geweest. Test met een
+verse `pm clear` en het gaat goed; open eerst `MainActivity` en het gaat mis. Vandaar dat
+`ChallengeStage` nu één *host* kent en alleen het resumed scherm die claimt.
 
 **De WebView hoeft nergens aan te hangen.** Dat is hier eerst anders opgeschreven, en dat was fout.
 Tijdens het zoeken naar de user-agent-bug leek het erop dat een losgekoppelde WebView geen frames

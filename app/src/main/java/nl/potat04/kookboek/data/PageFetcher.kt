@@ -2,12 +2,12 @@ package nl.potat04.kookboek.data
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.graphics.Bitmap
 import android.os.SystemClock
 import android.util.Log
 import android.view.ViewGroup
 import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
-import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import kotlinx.coroutines.Dispatchers
@@ -24,7 +24,7 @@ sealed interface FetchResult {
     data class Page(val html: String) : FetchResult
     /** A bot check stood in the way and would not step aside. */
     data object Blocked : FetchResult
-    /** No connection, a 404, a timeout — the page itself never arrived. */
+    /** No connection, a 404, a timeout. The page itself never arrived. */
     data object Unreachable : FetchResult
 }
 
@@ -36,7 +36,7 @@ sealed interface FetchResult {
  * blogs sit behind a Cloudflare check that answers a bare request with "Just a moment..."
  * and hands the real page over only to something that runs the challenge script. So when
  * that happens the URL goes to a WebView, which is a real Chromium and passes the check
- * the ordinary way — the same way it passes when you open the page in your browser.
+ * the ordinary way, the same way it does when you open the page in your browser.
  *
  * The cookie Cloudflare hands out afterwards is kept in the shared [CookieManager], so
  * the next recipe from that site usually comes back over plain HTTP again, and so
@@ -85,16 +85,28 @@ class PageFetcher(context: Context) {
         }
 
     /**
-     * Loads the page in a WebView and reads the DOM back out.
+     * Loads the page in a WebView and takes the result back out.
      *
-     * There is no callback for "the bot check is over": the challenge replaces the
-     * document under its own steam, sometimes more than once. So the DOM is sampled
-     * every [POLL_MS] until it stops looking like an interstitial and has enough in it
-     * to be a page, and [TIMEOUT_MS] decides when to give up.
+     * There is no callback for "the check is over": the challenge replaces the document
+     * under its own steam, sometimes more than once. So the document is what gets
+     * watched, sampled every [POLL_MS] until it stops looking like an interstitial and
+     * has enough in it to be a page, and [TIMEOUT_MS] decides when to give up.
      *
-     * Nothing here is dressed up. The WebView keeps its own user agent, loads what a
-     * page normally loads, and lets the check run. That is the whole trick: an ordinary
-     * browser passes, and anything that only half looks like one does not.
+     * A document is only read once it has finished loading. Without that the very first
+     * poll wins on a site whose cookies are already in the jar: the real page is halfway
+     * built, long enough to pass for a page and too early to hold the recipe, and what
+     * gets saved is a bare link.
+     *
+     * Waiting on Cloudflare's clearance cookie instead sounds better and is not. The
+     * cookie is rotated on the first response, well before the challenge is solved, so
+     * on any device with a cookie jar that has been used before it says "done" within
+     * half a second and the page fetched afterwards is the wall, not the recipe. Mihon
+     * can wait on that cookie because it is an OkHttp interceptor with no document in
+     * front of it. We have the document.
+     *
+     * The WebView carries the same identity as every other request the app makes, client
+     * hints included, and [BrowserIdentity] explains why that matters. Past that nothing
+     * is dressed up. It loads what a page normally loads and lets the check run.
      *
      * It goes on the [ChallengeStage] straight away but out of sight. Most checks never
      * need to be seen and pass in a second or two; the WebView does not have to be on
@@ -116,9 +128,18 @@ class PageFetcher(context: Context) {
                     javaScriptEnabled = true
                     domStorageEnabled = true
                 }
+                BrowserIdentity.disguise(view)
                 view.addJavascriptInterface(ChallengeWatcher(view), BRIDGE)
+                // Whether the document standing there right now finished loading. A
+                // check navigates more than once, so this goes false and true again.
+                var settled = false
                 view.webViewClient = object : WebViewClient() {
+                    override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
+                        settled = false
+                    }
+
                     override fun onPageFinished(view: WebView, url: String) {
+                        settled = true
                         view.evaluateJavascript(INTERACTIVE_LISTENER, null)
                     }
                 }
@@ -135,22 +156,19 @@ class PageFetcher(context: Context) {
                             // announces itself. Cloudflare's own signal is quicker.
                             ChallengeStage.reveal(view)
                         }
-                        val current = view.currentHtml() ?: continue
-                        if (current.length >= MIN_HTML &&
-                            !ChallengePage.looksLikeChallenge(current)
-                        ) {
-                            page = current
-                        }
+                        if (!settled) continue
+                        page = view.currentHtml().finishedPage()
                     }
                     page
                 }
+                CookieManager.getInstance().flush()
 
                 if (html == null) {
                     Log.w(TAG, "browser could not get past the bot check on $url")
-                    return@withContext FetchResult.Blocked
+                    FetchResult.Blocked
+                } else {
+                    FetchResult.Page(html)
                 }
-                CookieManager.getInstance().flush()
-                FetchResult.Page(html)
             } catch (e: Exception) {
                 // A device with the WebView package disabled or updating lands here.
                 Log.w(TAG, "no browser available for $url", e)
@@ -167,6 +185,10 @@ class PageFetcher(context: Context) {
                 }
             }
         }
+
+    /** This DOM if it is a page now, or null while it is still the check. */
+    private fun String?.finishedPage(): String? =
+        this?.takeIf { it.length >= MIN_HTML && !ChallengePage.looksLikeChallenge(it) }
 
     /**
      * The one thing the page is allowed to call back into.
@@ -224,46 +246,4 @@ class PageFetcher(context: Context) {
         /** Refusals that a real browser stands a chance of turning into a page. */
         val RETRY_IN_BROWSER = setOf(403, 429, 503)
     }
-}
-
-/**
- * Who the app says it is, everywhere.
- *
- * This is the WebView's own user agent, not one written by hand. A made-up string is
- * worse than useless: the WebView still sends `Sec-CH-UA` client hints describing its
- * real version, an edge that cares asks for those by name in `Critical-CH`, and a
- * user agent that contradicts them is a louder bot signal than no disguise at all. That
- * mismatch is what kept the check spinning until it was taken out.
- *
- * Cloudflare also ties its clearance cookie to the agent that earned it, so the plain
- * HTTP requests and the image downloads have to send the same one to keep using it.
- * [ImageStore.USER_AGENT] is only the fallback for a device with no usable WebView.
- */
-object BrowserIdentity {
-
-    @Volatile private var cached: String? = null
-
-    fun userAgent(context: Context): String = cached ?: runCatching {
-        WebSettings.getDefaultUserAgent(context)
-    }.getOrDefault(ImageStore.USER_AGENT).also { cached = it }
-}
-
-/** The cookie jar the WebView fills, readable by the plain HTTP requests. */
-object SiteCookies {
-
-    /** Cookies for [url] as Jsoup wants them, or empty when there are none. */
-    fun forUrl(url: String): Map<String, String> = runCatching {
-        val raw = CookieManager.getInstance().getCookie(url) ?: return emptyMap()
-        raw.split(';')
-            .mapNotNull { pair ->
-                val index = pair.indexOf('=')
-                if (index <= 0) null else pair.take(index).trim() to pair.drop(index + 1).trim()
-            }
-            .toMap()
-    }.getOrDefault(emptyMap())
-
-    /** The same cookies as one header value, for [java.net.HttpURLConnection]. */
-    fun header(url: String): String? = runCatching {
-        CookieManager.getInstance().getCookie(url)?.takeIf { it.isNotBlank() }
-    }.getOrNull()
 }

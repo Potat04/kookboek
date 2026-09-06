@@ -68,6 +68,9 @@ app/src/main/java/nl/potat04/kookboek/
     Recipe.kt           het domeinmodel dat de UI kent
     RecipeRepository.kt importeren, verversen, verwijderen
     PageFetcher.kt      de HTML halen: eerst Jsoup, bij een botcontrole een WebView
+    BrowserIdentity.kt  de user agent en de client hints, voor elk verzoek dezelfde
+    ChromeUserAgent.kt  haalt de WebView-verklikkers uit een user agent, puur en getest
+    SiteCookies.kt      de cookiepot van de WebView, leesbaar voor Jsoup en ImageStore
     ChallengePage.kt    herkent een botcontrole, puur en getest tegen echte pagina's
     ChallengeStage.kt   waar die WebView staat zolang de controle loopt
     RecipeStore.kt      Room erachter, StateFlow ervoor

@@ -15,8 +15,18 @@ Een WebView is echte Chromium, dus die komt er langs zoals je browser er langs k
    het blijft de eerste poging.
 2. Ziet `ChallengePage` een controle in het antwoord, of komt er een 403, 429 of 503 terug, dan
    gaat dezelfde URL naar een WebView.
-3. Die laadt de pagina, de controle draait, en de DOM wordt elke 400 ms uitgelezen tot die geen
-   interstitial meer is en meer dan 2000 tekens heeft. Na 60 seconden is het over.
+3. Die laadt de pagina en de controle draait. De DOM wordt elke 400 ms uitgelezen tot die klaar is
+   met laden, geen interstitial meer is en meer dan 2000 tekens heeft. Na 60 seconden is het over.
+
+Dat "klaar met laden" is `onPageFinished`, en het is geen detail. Staan de cookies van de site al
+in de pot, dan komt de echte pagina meteen en is die bij de eerste peiling half opgebouwd: lang
+genoeg om voor een pagina door te gaan, te vroeg om het recept te bevatten. Wat je dan bewaart is
+een kale link.
+
+Op `cf_clearance` wachten in plaats daarvan klinkt beter en is het niet. Cloudflare ververst dat
+koekje al bij het eerste antwoord, ruim voordat de controle klaar is, dus op een toestel met een
+gebruikte cookiepot zegt het binnen een halve seconde "klaar". Mihon mag er wel op wachten, want
+dat is een OkHttp-interceptor zonder document voor zich. Wij hebben het document.
 
 `FetchResult` is `Page`, `Blocked` of `Unreachable`. `Blocked` wordt `FailureReason.BLOCKED`, en
 het scherm zegt dan dat de site de app tegenhield, met de raad de pagina eerst in je browser te
@@ -26,18 +36,33 @@ openen en daarna opnieuw te delen.
 manier om een controle van een gewone weigering te onderscheiden. Alleen de waarde `challenge`
 telt. De body blijft meelezen voor de sprong ervóór, waar de edge van de site zelf een
 JavaScript-redirect kan sturen zonder Cloudflare-header. Een `<title>` van "Just a moment..." is
-op zichzelf genoeg; de script-markers tellen alleen mee als de server óók weigerde, want een site
-mag Turnstile op zijn reactieformulier zetten en daarboven een prima leesbaar recept serveren.
+op zichzelf genoeg; de overige script-markers tellen alleen mee als de server óók weigerde, want een
+site mag Turnstile op zijn reactieformulier zetten en daarboven een prima leesbaar recept serveren.
 
-## De user agent is die van de WebView zelf
+`cf_chl_opt` en `__cf_chl` tellen wél op zichzelf. Die staan alleen in de interstitial van
+Cloudflare, en anders dan de titel staan ze er in elke taal. Zodra het script gedraaid heeft heet
+de pagina namelijk "Even geduld..." op een Nederlands toestel, en dan matcht geen enkele Engelse
+titel meer. Zie [gotchas.md](gotchas.md).
 
-`BrowserIdentity` vraagt het platform (`WebSettings.getDefaultUserAgent`) en onthoudt het
-antwoord. Jsoup en `ImageStore` sturen diezelfde agent, want Cloudflare bindt zijn
-clearance-cookie aan de agent die hem verdiend heeft. `ImageStore.USER_AGENT` is nog alleen de
-terugval voor een toestel zonder bruikbare WebView.
+## De user agent is die van de WebView, vermomd als Chrome
 
-Verzin er dus geen. Een string die de client hints van de WebView tegenspreekt kostte een minuut
-per controle in plaats van twee seconden; dat verhaal staat in [gotchas.md](gotchas.md).
+`BrowserIdentity` vraagt het platform (`WebSettings.getDefaultUserAgent`) wat de WebView heet en
+laat `ChromeUserAgent` er de verklikkers uit halen: het `; wv)` in het platformdeel en de
+`Version/4.0` ervoor. Het toestelmodel wordt "Android 10; K", wat Chrome op Android zelf ook
+stuurt. Het Chrome-versienummer blijft staan zoals het toestel het opgaf. Jsoup en `ImageStore`
+sturen diezelfde string, want Cloudflare bindt zijn clearance-cookie aan de agent die hem verdiend
+heeft. `ImageStore.USER_AGENT` is nog alleen de terugval voor een toestel zonder bruikbare WebView.
+
+Alleen de string aanpassen is erger dan niets doen. Chromium blijft dan `Sec-CH-UA` client hints
+sturen die zijn echte merk en versie noemen, en een edge die erom geeft vraagt daar met
+`Critical-CH` expliciet om. `BrowserIdentity.disguise` zet daarom de string én herschrijft via
+`androidx.webkit` de merkenlijst in de `UserAgentMetadata`: "Android WebView" wordt "Google Chrome"
+op de versie die de string claimt. Een WebView die te oud is voor die API houdt zijn eigen hints;
+de string helpt daar nog steeds, meer is er niet.
+
+Verzin dus geen user agent, maar laat de WebView ook niet zichzelf zijn. Beide kanten van dat
+verhaal staan in [gotchas.md](gotchas.md), inclusief hoe lang de verkeerde conclusie er gestaan
+heeft.
 
 ## De cookie
 
@@ -55,8 +80,12 @@ interactief geworden is, met een `message` met `event: "interactiveBegin"`, dan 
 een klok op tien seconden.
 
 `ui/ChallengeOverlay.kt` tekent wat op de `ChallengeStage` staat, en elk scherm dat een import kan
-beginnen zet dat bovenaan zijn content. Er is één `AndroidView`-aanroep, met opzet: een WebView
-tussen twee aanroepen verplaatsen geeft `AndroidView` een view die nog een parent heeft.
+beginnen zet dat bovenaan zijn content. Dat zijn er twee, en ze kunnen tegelijk leven: de deel-sheet
+is doorzichtig, dus de bibliotheek eronder blijft gestart en blijft componeren. Eén WebView aan twee
+composities aanbieden zet hem twee keer in een view tree, en `AndroidView` gooit daarop. Daarom
+claimt alleen het scherm dat *resumed* is de stage, via `ChallengeStage.claim`. Dat is meteen het
+scherm waar een tik op aankomt. De `factory` haalt de view nog los van een oude parent, want een
+overdracht tussen twee schermen kost een frame of twee.
 
 De WebView is van de fetcher, en die ruimt hem op. Let op dat een WebView vernietigen die nog in
 een view tree hangt crasht, dus `PageFetcher` haalt hem er zelf uit voor `destroy()` in plaats van

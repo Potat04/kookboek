@@ -34,6 +34,19 @@ class ChallengePageTest {
     }
 
     @Test
+    fun `a challenge that has run is caught in any language`() {
+        // Saved off a Dutch phone after the challenge script had rewritten the document.
+        // Its title is "Even geduld...", so nothing in TITLES matches, and the response
+        // it came from is long gone by the time the DOM is read. Before the interstitial
+        // markers were trusted on their own this 28 KB wall passed for a recipe page.
+        val rendered = fixture("challenge-rendered-localised")
+
+        assertFalse("fixture should not be in English", "just a moment" in rendered.lowercase())
+        assertTrue(ChallengePage.looksLikeChallenge(rendered))
+        assertTrue(ChallengePage.looksLikeChallenge(rendered, 200))
+    }
+
+    @Test
     fun `real recipe pages are left alone`() {
         for (name in listOf("cheffatty", "ah", "leukerecepten", "24kitchen", "bbcgoodfood")) {
             assertFalse(name, ChallengePage.looksLikeChallenge(fixture(name), 200))

@@ -33,10 +33,24 @@ object ChallengePage {
      */
     fun looksLikeChallenge(html: String, status: Int = 200): Boolean {
         val lower = html.lowercase()
+        if (INTERSTITIAL.any { it in lower }) return true
         if (TITLES.any { "<title>$it" in lower }) return true
         if (status in 200..299) return false
         return MARKERS.any { it in lower }
     }
+
+    /**
+     * Only Cloudflare's own interstitial defines these, and it defines them whatever
+     * language it speaks. That matters once the challenge has run: it rewrites the
+     * title into the reader's language, so a Dutch phone gets "Even geduld..." and the
+     * English titles below never match. A 28 KB wall then passes for a page and the
+     * recipe is saved as a bare link. The embeddable Turnstile widget, which a site may
+     * legitimately put on a comment form, does not define them.
+     */
+    private val INTERSTITIAL = listOf(
+        "cf_chl_opt",
+        "__cf_chl",
+    )
 
     private val TITLES = listOf(
         "just a moment",
@@ -48,8 +62,6 @@ object ChallengePage {
     private val MARKERS = listOf(
         "/cdn-cgi/challenge-platform/",
         "challenges.cloudflare.com",
-        "cf_chl_opt",
-        "__cf_chl",
         "id=\"challenge-form\"",
         "ki-cf-botcl",
     )

@@ -31,10 +31,10 @@ Minificatiefouten zie je niet in debug:
 
 ## 2. Emulator starten
 
-Er is één AVD: `kookboek` (Android 36).
+Er is één AVD: `Sandbox` (Android 36). Controleer het met `emulator -list-avds` als het misgaat.
 
 ```bash
-"$LOCALAPPDATA/Android/Sdk/emulator/emulator.exe" -avd kookboek -no-snapshot-load
+"$LOCALAPPDATA/Android/Sdk/emulator/emulator.exe" -avd Sandbox -no-snapshot-load
 ```
 
 Start 'm op de achtergrond en wacht daarna tot hij op is:
