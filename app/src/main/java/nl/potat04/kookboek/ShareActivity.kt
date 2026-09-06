@@ -16,6 +16,7 @@ import nl.potat04.kookboek.data.FailureReason
 import nl.potat04.kookboek.data.ImportResult
 import nl.potat04.kookboek.data.extractUrl
 import nl.potat04.kookboek.data.normalizeUrl
+import nl.potat04.kookboek.ui.ChallengeOverlay
 import nl.potat04.kookboek.ui.ProvideImageStore
 import nl.potat04.kookboek.ui.ShareSheet
 import nl.potat04.kookboek.ui.ShareState
@@ -62,6 +63,8 @@ class ShareActivity : ComponentActivity() {
                         onClose = ::finish,
                         onOpen = ::openInApp,
                     )
+                    // Over the sheet, because a bot check that needs you needs the screen.
+                    ChallengeOverlay()
                 }
             }
         }

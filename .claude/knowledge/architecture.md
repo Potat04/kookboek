@@ -3,9 +3,14 @@
 Eén module, geen DI-framework, geen use-case-laag. De app is klein en mag klein blijven.
 
 ```
-ShareActivity ─┐                                          ┌─> RecipeStore ─> Room
-               ├─> KookboekViewModel ─> RecipeRepository ─┤
-MainActivity ──┘                                          └─> ImageStore ─> filesDir/images
+                                                          ┌─> RecipeStore ─> Room
+ShareActivity ─┐                                          │
+               ├─> KookboekViewModel ─> RecipeRepository ─┼─> ImageStore ─> filesDir/images
+MainActivity ──┘                                          │
+       │                                                  └─> PageFetcher ─> Jsoup
+       │                                                          │            of WebView
+       │                                                          v
+       └── ChallengeOverlay <──────────────────────────── ChallengeStage
        └───────────────────────────────> SettingsStore ─> SharedPreferences
 ```
 
@@ -30,6 +35,17 @@ terug (`Saved` / `AlreadySaved` / `Failed`), nooit een exception naar de UI.
 `loaded: StateFlow<Boolean>`, want een lege lijst betekent twee heel verschillende dingen:
 "je hebt geen recepten" en "we hebben nog niet gekeken". De UI mag pas iets beweren als
 `loaded` waar is.
+
+**`PageFetcher`** haalt de HTML op, langs twee wegen. Eerst een gewoon HTTP-verzoek met Jsoup —
+dat is wat bijna elke site krijgt en het blijft de eerste poging. Komt daar een botcontrole terug
+(`ChallengePage` herkent die), dan gaat dezelfde URL naar een WebView, want een echte Chromium
+komt er wél doorheen. De `cf_clearance` die de site daarna afgeeft blijft in de gedeelde
+`CookieManager` staan, dus het volgende recept van diezelfde site gaat weer over gewoon HTTP en
+`ImageStore` mag de foto ook ophalen.
+
+**`ChallengeStage`** is het doorgeefluik tussen die WebView en het scherm dat vooraan staat. Een
+WebView die aan geen enkel venster hangt tekent geen frames, en zonder frames loopt de controle
+van Cloudflare eeuwig door — hij moet dus in de view-tree. Zie [gotchas.md](gotchas.md).
 
 **`RecipeParser`** is puur: HTML in, `ParsedRecipe` uit. Geen netwerk, geen Android. Daarom is
 het als enige laag echt te testen. Zie [parser.md](parser.md).

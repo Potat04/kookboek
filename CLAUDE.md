@@ -65,6 +65,9 @@ app/src/main/java/nl/potat04/kookboek/
   data/
     Recipe.kt           het domeinmodel dat de UI kent
     RecipeRepository.kt ophalen, importeren, verversen, verwijderen
+    PageFetcher.kt      de HTML halen: eerst Jsoup, bij een botcontrole een WebView
+    ChallengePage.kt    herkent een botcontrole, puur en getest tegen echte pagina's
+    ChallengeStage.kt   waar die WebView aan het scherm hangt dat vooraan staat
     RecipeStore.kt      Room erachter, StateFlow ervoor
     ImageStore.kt       foto's downloaden, verkleinen, opruimen
     Settings.kt         welk palet, licht/donker, tekstgrootte
@@ -74,6 +77,7 @@ app/src/main/java/nl/potat04/kookboek/
     RecipeParser.kt     JSON-LD > microdata > plugins > heuristiek
     Scaling.kt          porties omrekenen ("1½ el")
   ui/
+    ChallengeOverlay.kt tekent de botcontrole waar PageFetcher doorheen werkt
     Labels.kt           getallen uit het model naar tekst in de gekozen taal
     UiText.kt           tekst die nog geen taal heeft (voor snackbars)
     Language.kt         de taalkeuze, via de LocaleManager van het platform

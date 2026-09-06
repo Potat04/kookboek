@@ -34,6 +34,7 @@ import nl.potat04.kookboek.ui.AddRecipeSheet
 import nl.potat04.kookboek.ui.EditScreen
 import nl.potat04.kookboek.ui.KookboekViewModel
 import nl.potat04.kookboek.ui.LibraryScreen
+import nl.potat04.kookboek.ui.ChallengeOverlay
 import nl.potat04.kookboek.ui.ProvideImageStore
 import nl.potat04.kookboek.ui.RecipeScreen
 import nl.potat04.kookboek.ui.SettingsScreen
@@ -59,6 +60,8 @@ class MainActivity : ComponentActivity() {
                 val vm: KookboekViewModel = viewModel(factory = KookboekViewModel.Factory)
                 ProvideImageStore(vm.images) {
                     PaperBackground { Kookboek(vm, store, openRecipe) }
+                    // Refreshing a recipe can run into a bot check just as importing can.
+                    ChallengeOverlay()
                 }
             }
         }
