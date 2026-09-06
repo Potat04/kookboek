@@ -28,3 +28,4 @@ app/release
 # Our own skills are listed below and stay committed.
 /.claude/skills/*
 !/.claude/skills/smoke-test/
+!/.claude/skills/feature-review/

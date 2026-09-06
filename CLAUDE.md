@@ -22,6 +22,7 @@ verandert aan de build of de opslag, lees de betreffende pagina in `.claude/know
 | Testen, emulator, de deel-flow echt uitproberen | [testing.md](.claude/knowledge/testing.md) |
 | Signeren en een bundle uitbrengen | [release.md](.claude/knowledge/release.md) |
 | Wat er eerder misging en hoe het opgelost is | [gotchas.md](.claude/knowledge/gotchas.md) |
+| Eerdere feature-rondes, wat er gevraagd en afgewezen is | [reviews/](.claude/knowledge/reviews/), nieuwe ronde via de skill `feature-review` |
 
 ## Harde regels
 

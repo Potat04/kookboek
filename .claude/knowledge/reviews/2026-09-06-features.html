@@ -1,0 +1,401 @@
+<title>Kookboek feature review</title>
+<style>
+  :root {
+    --paper: #F6F1E6;
+    --sheet: #FFFCF5;
+    --sheet-high: #EDE6D6;
+    --ink: #211D18;
+    --ink-muted: #4F4634;
+    --rule: #BEB296;
+    --rule-soft: #C8BB9E;
+    --accent: #A2441C;
+    --accent-soft: #F3E0D3;
+    --on-accent-soft: #54200C;
+    --warn: #9B3B2C;
+    --ok-bg: #E3E9D6;
+    --ok-fg: #2F4A1E;
+    --quiet-bg: #EDE6D6;
+    --quiet-fg: #4F4634;
+    --drift-bg: #F1DCD6;
+    --drift-fg: #7A2E1F;
+    --grain: rgba(0,0,0,0.035);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #15130F;
+      --sheet: #1E1B15;
+      --sheet-high: #2A251E;
+      --ink: #EFE7D8;
+      --ink-muted: #C2B6A2;
+      --rule: #4A4234;
+      --rule-soft: #3B342A;
+      --accent: #E08B5C;
+      --accent-soft: #3A2318;
+      --on-accent-soft: #FFD9C2;
+      --warn: #E0846F;
+      --ok-bg: #26301B;
+      --ok-fg: #C5D6A8;
+      --quiet-bg: #2A251E;
+      --quiet-fg: #C2B6A2;
+      --drift-bg: #3A2118;
+      --drift-fg: #F0B6A4;
+      --grain: rgba(255,255,255,0.025);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #15130F;
+    --sheet: #1E1B15;
+    --sheet-high: #2A251E;
+    --ink: #EFE7D8;
+    --ink-muted: #C2B6A2;
+    --rule: #4A4234;
+    --rule-soft: #3B342A;
+    --accent: #E08B5C;
+    --accent-soft: #3A2318;
+    --on-accent-soft: #FFD9C2;
+    --warn: #E0846F;
+    --ok-bg: #26301B;
+    --ok-fg: #C5D6A8;
+    --quiet-bg: #2A251E;
+    --quiet-fg: #C2B6A2;
+    --drift-bg: #3A2118;
+    --drift-fg: #F0B6A4;
+    --grain: rgba(255,255,255,0.025);
+  }
+
+  body {
+    background: var(--paper);
+    background-image: radial-gradient(var(--grain) 1px, transparent 1px);
+    background-size: 3px 3px;
+    color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 16px;
+    line-height: 1.55;
+    margin: 0;
+  }
+  main { max-width: 76ch; margin: 0 auto; padding: 40px 20px 80px; }
+  h1, h2, h3 { font-family: Georgia, "Times New Roman", "Noto Serif", serif; font-weight: 500; text-wrap: balance; margin: 0; }
+  h1 { font-size: 2.4rem; line-height: 1.1; }
+  h2 { font-size: 1.6rem; line-height: 1.2; margin-top: 56px; padding-bottom: 8px; border-bottom: 1px solid var(--rule); }
+  h3 { font-size: 1.15rem; line-height: 1.3; }
+  p { margin: 0 0 14px; }
+  a { color: var(--accent); }
+  .lede { font-family: Georgia, "Times New Roman", serif; font-style: italic; font-size: 1.15rem; color: var(--ink); margin-top: 14px; }
+  .meta { color: var(--ink-muted); font-size: 0.9rem; margin-top: 8px; }
+  .eyebrow { font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-muted); margin-bottom: 6px; }
+
+  .counts { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; margin: 28px 0 8px; }
+  .count { background: var(--sheet); border: 1px solid var(--rule); border-radius: 4px; padding: 10px 12px; }
+  .count b { display: block; font-family: Georgia, serif; font-size: 1.7rem; font-weight: 500; font-variant-numeric: tabular-nums; }
+  .count span { font-size: 0.8rem; color: var(--ink-muted); }
+
+  .box { background: var(--sheet); border: 1px solid var(--rule); border-radius: 4px; padding: 16px 18px; margin: 18px 0; }
+  .box.accent { border-color: var(--accent); }
+  .box p:last-child { margin-bottom: 0; }
+
+  .chip { display: inline-block; font-size: 0.72rem; letter-spacing: 0.04em; text-transform: uppercase; padding: 2px 8px; border-radius: 3px; white-space: nowrap; vertical-align: middle; }
+  .fit { background: var(--ok-bg); color: var(--ok-fg); }
+  .quiet { background: var(--quiet-bg); color: var(--quiet-fg); border: 1px solid var(--rule-soft); }
+  .drift { background: var(--drift-bg); color: var(--drift-fg); }
+  .size { background: var(--accent-soft); color: var(--on-accent-soft); }
+  .who { color: var(--ink-muted); font-size: 0.8rem; }
+
+  .feature { border-top: 1px solid var(--rule-soft); padding: 18px 0 16px; }
+  .feature:first-of-type { border-top: 0; }
+  .feature .head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 10px; margin-bottom: 6px; }
+  .feature .head h3 { flex: 1 1 auto; }
+  .feature p { margin-bottom: 8px; }
+  .feature .touch { font-size: 0.85rem; color: var(--ink-muted); }
+  .feature .touch code { font-size: 0.82rem; background: var(--sheet-high); padding: 1px 5px; border-radius: 3px; }
+  .verdict { font-family: Georgia, serif; font-style: italic; }
+
+  .tablewrap { overflow-x: auto; margin: 16px 0; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.93rem; }
+  th { text-align: left; font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-muted); font-weight: 600; padding: 8px 10px 8px 0; border-bottom: 1px solid var(--rule); }
+  td { padding: 10px 10px 10px 0; border-bottom: 1px solid var(--rule-soft); vertical-align: top; }
+  td.name { font-weight: 600; min-width: 12rem; }
+  td.why { color: var(--ink); }
+  td.who { white-space: nowrap; }
+  tr:last-child td { border-bottom: 0; }
+
+  ul { padding-left: 1.2em; margin: 0 0 14px; }
+  li { margin-bottom: 6px; }
+  ol.order li { margin-bottom: 10px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 0.85rem; color: var(--ink-muted); margin: 10px 0 0; }
+  .legend span { display: inline-flex; gap: 6px; align-items: center; }
+  .personas { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin: 14px 0; }
+  .persona { background: var(--sheet); border: 1px solid var(--rule-soft); border-radius: 4px; padding: 10px 12px; font-size: 0.9rem; }
+  .persona b { font-family: Georgia, serif; font-weight: 500; font-size: 1.05rem; display: block; }
+  .persona span { color: var(--ink-muted); }
+  code { font-family: ui-monospace, Consolas, monospace; }
+  @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+</style>
+
+<main>
+  <div class="eyebrow">Kookboek · 6 September 2026</div>
+  <h1>What Kookboek is missing</h1>
+  <p class="lede">Six imagined users walked through the app. I read what they wanted, checked it against the code, threw out what was wrong or off-vision, and ranked the rest.</p>
+  <p class="meta">Judged against the vision Anton gave today: a paper-like, calm recipe book for himself, family and friends. Cookbook first, kitchen tools later. No services except the sites recipes come from and possibly a backup. Dutch and English.</p>
+
+  <div class="counts">
+    <div class="count"><b>7</b><span>major</span></div>
+    <div class="count"><b>10</b><span>medium</span></div>
+    <div class="count"><b>19</b><span>small</span></div>
+    <div class="count"><b>10</b><span>quality of life</span></div>
+    <div class="count"><b>13</b><span>bonus, kitchen tools</span></div>
+    <div class="count"><b>8</b><span>rejected</span></div>
+  </div>
+  <div class="legend">
+    <span><i class="chip fit">fits</i> belongs in a paper cookbook</span>
+    <span><i class="chip quiet">fits if quiet</i> fine, as long as it does not become a screen of its own</span>
+    <span><i class="chip drift">drift</i> pulls toward a different app</span>
+  </div>
+
+  <h2>The one-paragraph verdict</h2>
+  <p>The app does its core job well. Saving a page and reading it later is solid, honest about failure, and pleasant to look at. What it lacks is everything around that moment. The data lives in one place and nowhere else. A recipe cannot leave the phone except as a link back to the site. The library is a flat list that stops working somewhere around forty recipes. And the screen you actually cook from is a scrolling document, not a page you can read from the far side of the counter. None of the big gaps require breaking the vision. Most of them are what a paper cookbook already does, moved to a phone.</p>
+
+  <div class="box accent">
+    <div class="eyebrow">If I had to pick an order</div>
+    <ol class="order">
+      <li><b>Backup file you own.</b> Everything else assumes the recipes survive. Today they exist in one SQLite file and an Android backup nobody can inspect.</li>
+      <li><b>Two small ones with big payoff.</b> Remember the servings someone cooked for, and remember the sort order. Both are one column or one preference.</li>
+      <li><b>Cook mode</b>, with timers handed to the phone's clock. This is where the app is used, and today it is the weakest screen for that.</li>
+      <li><b>Sections of the book.</b> Labels the reader controls, fed by the parser's keywords. The library needs this before it reaches a hundred recipes.</li>
+      <li><b>Hand a recipe to someone.</b> The audience is family and friends. A cookbook gets passed round the table.</li>
+      <li><b>Own photos</b>, then print, then recipes that arrive as text, then the tablet layout.</li>
+    </ol>
+  </div>
+
+  <h2>Who was asked</h2>
+  <p>Six haiku agents, each given one persona and read access to the code, the strings file and the UX rules. Their reports overlap heavily, which is a useful signal. When four of six ask for the same thing without talking to each other, it is probably real.</p>
+  <div class="personas">
+    <div class="persona"><b>C · the weeknight cook</b><span>Phone on the counter, hands in the dough. Cares about reading from a distance and not losing the place.</span></div>
+    <div class="persona"><b>K · the collector</b><span>Three hundred recipes saved, half never cooked. Cares about finding, grouping and remembering.</span></div>
+    <div class="persona"><b>F · the family member</b><span>Got the APK from Anton. Grandma's cards, WhatsApp screenshots, wants to swap recipes.</span></div>
+    <div class="persona"><b>D · the data owner</b><span>Burned by dead apps. Cares about export, restore, and what happens when a site vanishes.</span></div>
+    <div class="persona"><b>O · the older reader</b><span>Reading glasses, one hand, tremor, large text. Prints things. Cooks in Dutch.</span></div>
+    <div class="persona"><b>T · the kitchen-tool dreamer</b><span>Has used Paprika, Mealie, Tandoor. Knows which features die after week two.</span></div>
+  </div>
+
+  <h2>Major</h2>
+  <p>Each of these is a new capability, touches more than one layer, and changes what the app is for someone. All seven fit the vision. I checked each against the "what is deliberately not there" list in the architecture notes, and none of them add a server, an account, a DI container or a domain layer.</p>
+
+  <div class="feature">
+    <div class="head"><h3>1. A backup file you own</h3><i class="chip size">major</i><i class="chip fit">fits</i><span class="who">asked by D, O, F, T</span></div>
+    <p>One zip with a recipes JSON and the images folder, written wherever the reader points the system file picker. Restore reads the same file back and merges by id. That picker already offers Google Drive, Nextcloud, a USB stick, whatever is installed, so there is no SDK and no account code. Anton mentioned account-based backups as open to suggestion. I would not build one. The file picker gives the same result for free and keeps the "no services" line intact.</p>
+    <p class="verdict">This is the one I would build first. A recipe book that lives in one SQLite file is a recipe book with a single point of failure, and the README's own data page says this is "precisely the data that exists nowhere else".</p>
+    <p class="touch">Touches <code>RecipeRepository</code>, <code>ImageStore</code>, a new <code>data/Backup.kt</code>, a settings row, <code>ACTION_CREATE_DOCUMENT</code> and <code>ACTION_OPEN_DOCUMENT</code>. No schema change. The JSON shape becomes a public format, so version it from day one.</p>
+  </div>
+
+  <div class="feature">
+    <div class="head"><h3>2. Hand a recipe to someone</h3><i class="chip size">major</i><i class="chip fit">fits</i><span class="who">asked by F, D, O</span></div>
+    <p>Today the only way out is the link to the original site. Two exits are missing. First, plain text through the share sheet, so a recipe lands in WhatsApp readable. Second, a single-recipe file with its photo that another phone's Kookboek opens straight into the library. The file gets its own extension and mime type and is opened with a view intent, not a send intent. That keeps the rule from the README that Kookboek stays out of every other app's share menu.</p>
+    <p class="verdict">The audience is family and friends. If two people in one household both run Kookboek and cannot pass a recipe between them, the app is missing its most obvious social moment.</p>
+    <p class="touch">Touches the manifest, <code>ShareActivity</code> or a sibling for incoming files, <code>RecipeRepository.importFile</code>, the overflow menu on <code>RecipeScreen</code>, and the selection bar (share several at once). Shares the JSON shape with the backup.</p>
+  </div>
+
+  <div class="feature">
+    <div class="head"><h3>3. Sections of the book</h3><i class="chip size">major</i><i class="chip fit">fits</i><span class="who">asked by K, F, O, T</span></div>
+    <p>Labels the reader creates and assigns, one recipe in several, shown as a chip row under the search field and settable from selection mode. The parser already reads keywords, category and cuisine into <code>tags</code> and shows two of them on the detail screen. Those become suggestions when you label, not a second concept beside labels. One idea, not "tags and collections".</p>
+    <p>This does break a rule the UI notes state on purpose, that selection mode offers exactly the two actions a single recipe has. Labelling would be a third. I think the rule is right in spirit and this is the exception worth making, because assigning ten recipes to "Weeknight" one by one is the tedium that stops people organizing at all.</p>
+    <p class="verdict">Every paper cookbook has tabs. A flat list of three hundred cards with a search box is a search engine, not a book.</p>
+    <p class="touch">New <code>labels</code> and <code>recipe_labels</code> tables, migration to version 2, DAO joins, filter in <code>KookboekViewModel</code>, chips in <code>LibraryScreen</code>, a picker sheet. The existing <code>tags</code> JSON column stays as the parser's raw input.</p>
+  </div>
+
+  <div class="feature">
+    <div class="head"><h3>4. Cook mode</h3><i class="chip size">major</i><i class="chip fit">fits</i><span class="who">asked by C, O, T</span></div>
+    <p>A second way to read the same recipe. One step per screen in the largest serif the palette allows, tap the right half for next and the left half for back, ingredients as a sheet you pull up from the bottom without leaving the step. Keep-screen-on already exists. The step counter is the only chrome. The weeknight cook's whole report was about scrolling past the photo and description to get back to the salt, then losing the step.</p>
+    <p class="verdict">The moment the phone is on the counter is the moment the app exists for, and today that screen is a long document designed for reading on the sofa. Both readings are right. They should be two modes.</p>
+    <p class="touch">New <code>ui/CookScreen.kt</code>, a fifth navigation destination, an entry button under the method header. Reuses <code>Scaling</code> and the check state. Pairs with the timer item below.</p>
+  </div>
+
+  <div class="feature">
+    <div class="head"><h3>5. Your own photos</h3><i class="chip size">major</i><i class="chip fit">fits</i><span class="who">asked by F, O, T, and the README's own not-yet list</span></div>
+    <p>Three cases share one mechanism. A handwritten recipe gets a photo of the dish. A fetched recipe whose picture turned out to be the site's logo gets replaced. And grandma's card gets photographed and kept as an attachment beside the typed-out version, because the handwriting is part of the recipe. The photo picker needs no permission on current Android. The picked image goes through the same resize and JPEG path that fetched images do.</p>
+    <p class="verdict">Fits without reservation. The family persona put it plainly: the heirloom recipes are the ones that need this most, and they are exactly the ones the browser share cannot bring in.</p>
+    <p class="touch"><code>ImageStore.saveFromUri</code>, a photo row in <code>EditScreen</code>, <code>PickVisualMedia</code>. The attachment case adds an <code>attachmentFile</code> column and a migration; the first two cases do not.</p>
+  </div>
+
+  <div class="feature">
+    <div class="head"><h3>6. Recipes that arrive as text, not links</h3><i class="chip size">major</i><i class="chip fit">fits</i><span class="who">asked by F, and me</span></div>
+    <p>Half the recipes in a family travel as a WhatsApp message, a note, or a pasted block from a PDF. The app already accepts shared text, then answers "There was no link in that" and stops. Instead, text without a URL should open the editor pre-filled, with a heuristic split: the lines that look like quantities become ingredients, the paragraphs after them become steps, the first short line is the title. The reader fixes what the split got wrong before saving, so the heuristic can be modest.</p>
+    <p class="verdict">Same share gesture, same mime type, same promise. It only widens what "share to Kookboek" means from "a page" to "a recipe, wherever it was".</p>
+    <p class="touch"><code>ShareActivity</code> branches on "no URL found", new pure <code>parse/TextRecipe.kt</code> with tests against real pasted messages as fixtures, <code>EditScreen</code> gains a prefill path.</p>
+  </div>
+
+  <div class="feature">
+    <div class="head"><h3>7. The book opened flat: tablet and landscape</h3><i class="chip size">major</i><i class="chip fit">fits</i><span class="who">asked by me; F implied it</span></div>
+    <p>A tablet on the counter is how many households cook from a screen, and a phone turned sideways is how one person does it with the phone propped against the tiles. Both get the same layout: ingredients on the left page, method on the right, photo and title above. The library becomes two or three columns of cards at width. This is the one item where the paper metaphor gives the design for free, because a cookbook lies open on two pages.</p>
+    <p class="verdict">Major because every screen is affected, not because any one part is hard. Cook mode and this should be designed together so the step view knows what to do with a second column.</p>
+    <p class="touch">Window size classes in <code>MainActivity</code>, a two-pane branch in <code>RecipeScreen</code>, a grid branch in <code>LibraryScreen</code>. The palettes, typography and paper grain need nothing.</p>
+  </div>
+
+  <h2>Medium</h2>
+  <p>Each of these is a focused change with a clear edge. Several are the small end of the majors above and could be built first as a stepping stone.</p>
+
+  <div class="feature">
+    <div class="head"><h3>Remember the servings you cooked for</h3><i class="chip size">medium</i><i class="chip fit">fits</i><span class="who">C, D, O</span></div>
+    <p>The stepper resets to the page's number every time the recipe opens. Someone who always cooks for six sets it to six every time. Store the chosen number per recipe, keep "scaled from 4" visible, and let the editor's servings field stay the original. Everyone who cooked from the app in their head asked for this.</p>
+    <p class="touch">One column, one migration, <code>RecipeScreen</code> reads it instead of local state.</p>
+  </div>
+
+  <div class="feature">
+    <div class="head"><h3>Ingredients within reach while in the method</h3><i class="chip size">medium</i><i class="chip fit">fits</i><span class="who">C, O</span></div>
+    <p>Even without cook mode, the normal screen needs a way back to the salt without scrolling past the photo. A "show ingredients" pull-up from the method section, or the ingredients header pinning to the top as it scrolls off. The list is already scaled and ticked, so this is presentation only.</p>
+    <p class="touch"><code>RecipeScreen</code> only. A sticky header in <code>LazyColumn</code> or a small <code>ModalBottomSheet</code>.</p>
+  </div>
+
+  <div class="feature">
+    <div class="head"><h3>Print, or save as PDF</h3><i class="chip size">medium</i><i class="chip fit">fits</i><span class="who">O, F, T</span></div>
+    <p>The older reader sticks recipes to the fridge. Android's print manager takes an HTML document and offers every printer and "Save as PDF". Rendering the recipe as a one-page HTML in the palette's ink on white is a small template. This is also the honest route for "send as PDF" without adding a PDF library.</p>
+    <p class="verdict">An app whose whole identity is paper should be able to become paper.</p>
+    <p class="touch">A <code>PrintRecipe.kt</code> that builds HTML from a <code>Recipe</code> and a <code>WebView</code> print adapter. One menu item.</p>
+  </div>
+
+  <div class="feature">
+    <div class="head"><h3>Honest, specific failure</h3><i class="chip size">medium</i><i class="chip fit">fits</i><span class="who">F, D, O</span></div>
+    <p>"That didn't work" is honest but not useful. The repository already knows whether the site blocked the app, the page had no recipe markup, the network was down, or the check timed out. Each of those has one right next step and should say it. After a batch refetch, the selection should stay on the ones that failed instead of clearing, so "3 failed" is something you can act on.</p>
+    <p class="verdict">"Never lie about what worked" is already a rule in the UI notes. This finishes it by also saying why.</p>
+    <p class="touch"><code>FailureReason</code> grows a case or two, strings in both files, <code>ShareSheet</code> and the toasts, <code>refreshSelected</code> keeps the failed ids.</p>
+  </div>
+
+  <div class="feature">
+    <div class="head"><h3>"Help Kookboek read this site"</h3><i class="chip size">medium</i><i class="chip fit">fits</i><span class="who">me, D</span></div>
+    <p>On a link-only or partly-read recipe, a button that saves the fetched HTML to a file the reader can send to Anton. That file is a fixture, and the testing rules say new site support starts with a fixture. With family running the app, this turns every failed import into a test case without anyone having to explain how to save a web page.</p>
+    <p class="verdict">Cheap, on-vision, and it feeds the one kind of work the kitchen-tool persona said is worth doing right now, which is parser reach.</p>
+    <p class="touch"><code>RecipeRepository</code> keeps the last fetched HTML for a recipe (in memory or a temp file), one button in <code>CouldNotRead</code>, a share of a <code>.html</code> file.</p>
+  </div>
+
+  <div class="feature">
+    <div class="head"><h3>Made it</h3><i class="chip size">medium</i><i class="chip quiet">fits if quiet</i><span class="who">K, T, D</span></div>
+    <p>One tap that stamps today's date on the recipe, with an optional line that lands in the notes. Then "last cooked" as a sort, and "never cooked" as a filter. No stars, no counts on the card. The collector's real question was "which of these three hundred have I actually made", and a date answers that.</p>
+    <p class="verdict">This is the pencil tick in the margin of a real cookbook. The moment it becomes a rating or a streak it stops being that.</p>
+    <p class="touch">A <code>lastCookedAt</code> column and migration, a menu item, a sort option, a filter chip.</p>
+  </div>
+
+  <div class="feature">
+    <div class="head"><h3>Filters that stack</h3><i class="chip size">medium</i><i class="chip fit">fits</i><span class="who">K, F</span></div>
+    <p>Favourites plus a label plus "under 30 minutes" plus a site, all as chips in the same row the favourites chip lives in now. Not a filter screen. The ViewModel already composes filters in one <code>combine</code>, so this is mostly adding flows and chips.</p>
+    <p class="touch"><code>KookboekViewModel.visible</code>, <code>FilterRow</code>. Depends on labels for the label chip; the time and site chips can land first.</p>
+  </div>
+
+  <div class="feature">
+    <div class="head"><h3>Refetch shows what it will replace</h3><i class="chip size">medium</i><i class="chip fit">fits</i><span class="who">D, F</span></div>
+    <p>Refetch keeps notes, favourite and ticks, which two personas wrongly feared it did not. What it does replace is the ingredients and steps, including any typo the reader fixed by hand. Remember whether a recipe was hand-edited and, if so, say so before refetching, or show the two ingredient lists side by side and let the reader choose.</p>
+    <p class="touch">An <code>editedAt</code> column, a confirm step in <code>refresh</code>, a small diff view.</p>
+  </div>
+
+  <div class="feature">
+    <div class="head"><h3>Ingredient groups</h3><i class="chip size">medium</i><i class="chip fit">fits</i><span class="who">C, T</span></div>
+    <p>Steps already carry a section ("Voor de saus"). Ingredients do not, so a layered recipe shows one long list while the method is neatly grouped. WP Recipe Maker and Tasty both publish ingredient group headings, and the editor already has "# heading" syntax for steps that can apply to ingredients too.</p>
+    <p class="touch">Parser plugin path plus a fixture that has groups, a <code>section</code> column on <code>ingredients</code> and a migration, the same heading rendering as steps.</p>
+  </div>
+
+  <div class="feature">
+    <div class="head"><h3>Timers handed to the phone's clock</h3><i class="chip size">medium</i><i class="chip fit">fits</i><span class="who">C, T, me</span></div>
+    <p>When a step says "bak 25 minuten" or "simmer for 20 min", underline the duration. Tapping it fires the system set-timer intent with the recipe title as the label. The clock app does the ringing, the app builds no timer UI and holds no background service. Two languages, one regex, tested against the fixtures.</p>
+    <p class="verdict">The most on-brand kitchen helper there is. It gives the phone's own clock the job instead of growing one.</p>
+    <p class="touch">A pure <code>parse/Durations.kt</code>, an annotated string in <code>StepRow</code>, <code>AlarmClock.ACTION_SET_TIMER</code>.</p>
+  </div>
+
+  <h2>Small</h2>
+  <p>Each is a day or less, most much less. Several are wording. Where a persona asked for a screen, I have written down the smallest thing that answers the need.</p>
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>Feature</th><th>Why</th><th>Fit</th><th>Who</th></tr></thead>
+    <tbody>
+      <tr><td class="name">Sort and favourites filter survive a restart</td><td class="why">Both reset to defaults every launch. One preference each in <code>SettingsStore</code>.</td><td><i class="chip fit">fits</i></td><td class="who">K</td></tr>
+      <tr><td class="name">Search ignores accents</td><td class="why">"creme" should find "crème fraîche", "jalapeno" should find "jalapeño". Normalize both the blob and the query. Real in a Dutch library full of French and Spanish words.</td><td><i class="chip fit">fits</i></td><td class="who">me</td></tr>
+      <tr><td class="name">Tap a tag to search it</td><td class="why">The tags on the detail screen look like buttons and are not. The older reader wondered whether they filtered. Make them.</td><td><i class="chip fit">fits</i></td><td class="who">K, O</td></tr>
+      <tr><td class="name">Show all tags, not two</td><td class="why"><code>take(2)</code> hides the rest with no hint they exist. Flow them all, or show "+3".</td><td><i class="chip fit">fits</i></td><td class="who">K</td></tr>
+      <tr><td class="name">Copy ingredients as text</td><td class="why">Long-press the ingredients header, or a menu item. Puts the list in whatever shopping app the household already uses, and postpones a shopping list of our own.</td><td><i class="chip fit">fits</i></td><td class="who">O, C</td></tr>
+      <tr><td class="name">Fold away ticked ingredients</td><td class="why">Gathered lines collapse to one "5 gathered" row so what remains is what you still need. A toggle on the header, no reordering.</td><td><i class="chip fit">fits</i></td><td class="who">C</td></tr>
+      <tr><td class="name">Cancel a running fetch</td><td class="why">Share sheet and add sheet lock while fetching, up to the 60 second challenge timeout. A Cancel button and a cancellable job.</td><td><i class="chip fit">fits</i></td><td class="who">O</td></tr>
+      <tr><td class="name">Teach long-press once</td><td class="why">Selection mode is invisible until you stumble on it. One line under the search field the first time the library has two or more recipes, gone after the first selection.</td><td><i class="chip fit">fits</i></td><td class="who">O</td></tr>
+      <tr><td class="name">Link-only card wording</td><td class="why">Red "link only" reads as an error to two personas. A muted label with the action in it: "only the link, tap to fill in".</td><td><i class="chip fit">fits</i></td><td class="who">O, F</td></tr>
+      <tr><td class="name">Explain "# heading" where it is used</td><td class="why">The syntax lives in a field label and nowhere else. A small "Add heading" chip above the box that inserts "# " teaches by doing.</td><td><i class="chip fit">fits</i></td><td class="who">F</td></tr>
+      <tr><td class="name">Warn before ticks are lost on save</td><td class="why">Editing the lists clears ticks by design. Say so, but only when ticks exist and the lists changed.</td><td><i class="chip fit">fits</i></td><td class="who">O</td></tr>
+      <tr><td class="name">Picture full-screen on tap</td><td class="why">16:10 on a phone is small from the counter. Tap to fill, pinch to zoom, tap to dismiss.</td><td><i class="chip fit">fits</i></td><td class="who">C</td></tr>
+      <tr><td class="name">Partly-read badge on the card</td><td class="why">Only link-only recipes are marked in the library. "Worth a look" flashes once in the share sheet and is gone. A quiet marker until the recipe has been opened once.</td><td><i class="chip fit">fits</i></td><td class="who">F</td></tr>
+      <tr><td class="name">Recently deleted, thirty days</td><td class="why">Undo lives only in the snackbar. A soft delete with a list in settings means a recipe deleted by a wet thumb yesterday is still there. Touches the schema, so arguably medium.</td><td><i class="chip fit">fits</i></td><td class="who">D</td></tr>
+      <tr><td class="name">Pick one for me</td><td class="why">A shuffle icon beside the sort menu opens a random recipe from the current filter. The collector's "what was that thing I saved and forgot" in one tap. A cookbook opened at a random page.</td><td><i class="chip quiet">fits if quiet</i></td><td class="who">K, me</td></tr>
+      <tr><td class="name">Time filter chip</td><td class="why">"Under 30 min" as a chip. <code>totalMinutes</code> is already there and sorting by it already exists.</td><td><i class="chip fit">fits</i></td><td class="who">F, K</td></tr>
+      <tr><td class="name">Tap the site name for everything from that site</td><td class="why">The byline is text. Tapping it sets the search to the site. Also the fastest way to find everything that broke when a site changed.</td><td><i class="chip fit">fits</i></td><td class="who">K</td></tr>
+      <tr><td class="name">Prep and cook time apart</td><td class="why">The parser reads both and sums them. Keep them, show "15 min, then 40 min in the oven" when the page gave both. Needs two columns.</td><td><i class="chip fit">fits</i></td><td class="who">me</td></tr>
+      <tr><td class="name">Video link when the page has one</td><td class="why">Schema.org recipes often carry a <code>video</code>. Store the URL, show a quiet "watch" link by the byline. No player.</td><td><i class="chip quiet">fits if quiet</i></td><td class="who">T</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h2>Quality of life</h2>
+  <p>Things nobody asks for and everybody notices. Two of these are my own disagreements with the current code, marked as such.</p>
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>Change</th><th>Why</th><th>Who</th></tr></thead>
+    <tbody>
+      <tr><td class="name">Haptic tick when checking a line</td><td class="why">Wet hands, eyes on the pan. A short vibration confirms the tick without looking.</td><td class="who">C</td></tr>
+      <tr><td class="name">Library keeps its scroll position</td><td class="why">Open a recipe, come back, and you should be where you were. Worth checking on the emulator; a <code>LazyColumn</code> in a nav destination often loses it.</td><td class="who">me</td></tr>
+      <tr><td class="name">Drop the confirm dialog on single delete</td><td class="why">The UI notes argue, for selection delete, that a dialog asks for confirmation at the moment you are surest and helps nothing afterwards, and that undo is the right safety. Single delete still has the dialog. Apply the rule to both.</td><td class="who">me</td></tr>
+      <tr><td class="name">Bigger stepper glyphs</td><td class="why">The touch target is already 48dp. The visible minus and plus are 18dp. Draw them at the size of the number between them so the target looks as big as it is.</td><td class="who">O</td></tr>
+      <tr><td class="name">A small "saved" after notes autosave</td><td class="why">Notes save 600 ms after you stop typing with no sign. A faint check that fades is enough.</td><td class="who">C, O</td></tr>
+      <tr><td class="name">Launcher shortcuts</td><td class="why">Long-press the icon for "Favourites" and "Paste a link". Careful with the alias mechanism: the shortcuts belong on the router, not on the aliases.</td><td class="who">me</td></tr>
+      <tr><td class="name">Text in steps and ingredients is selectable</td><td class="why">A <code>SelectionContainer</code> so one line can be copied into a message. Today long-press does nothing there.</td><td class="who">O</td></tr>
+      <tr><td class="name">Paste starts the fetch</td><td class="why">In the add sheet, tapping Paste fills the field and then waits for a second tap on Fetch. If the clipboard holds a URL, fetch straight away. One tap fewer on the only path that competes with the share menu.</td><td class="who">me</td></tr>
+      <tr><td class="name">Settings preview shows a check line and a step badge</td><td class="why">The type specimen shows a title, a summary and a step. Add one ingredient with its box, so text size is judged on the controls too.</td><td class="who">me</td></tr>
+      <tr><td class="name">Back clears the search first</td><td class="why">With a query typed, Back should clear and unfocus the field before it leaves the screen. Standard on Android, easy to miss.</td><td class="who">me</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h2>Bonus: kitchen tools, for later</h2>
+  <p>Anton asked for this list separately and said "go wild, but keep a little to the idea". The kitchen-tool persona ranked these by how much real use they get in the apps that have them. I have added a verdict for each. The pattern is consistent. The helpers that survive are the ones that hand a job to something the phone already has, or that reuse a structure the app already stores. The ones that die need the reader to maintain data.</p>
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>Idea</th><th>What it is, and my verdict</th><th>Fit</th></tr></thead>
+    <tbody>
+      <tr><td class="name">Shopping list across recipes</td><td class="why">The README's own not-yet. One list, plain lines from one or several recipes, tick off, share as text. Start without merging quantities; "2 uien" twice is fine. The moment it wants a store layout or aisles it has become a different app.</td><td><i class="chip quiet">fits if quiet</i></td></tr>
+      <tr><td class="name">Unit conversion on tap</td><td class="why">Tap "250 ml" for cups, "350 °F" for Celsius, "4 oz" for grams. Volume and temperature are pure maths. Weight from volume needs a density table and gets wrong fast; leave that out.</td><td><i class="chip quiet">fits if quiet</i></td></tr>
+      <tr><td class="name">Import from Paprika, Mealie, Tandoor</td><td class="why">If the Play Store happens, switchers arrive with an export file. Each is a documented JSON or zip. Reuses the backup import path.</td><td><i class="chip fit">fits</i></td></tr>
+      <tr><td class="name">OCR a photo of a recipe card</td><td class="why">On-device text recognition would turn grandma's card into typed ingredients. The story fits perfectly. The cost is a Google library and several megabytes in the APK, for an app that refuses to download a font. Maybe, and only on-device.</td><td><i class="chip quiet">fits if quiet</i></td></tr>
+      <tr><td class="name">A week's plan</td><td class="why">As a calendar with slots, this is drift; it is the feature people set up once and abandon. As a label called "Deze week" that you empty on Sunday, it falls out of sections of the book for free. Do the second.</td><td><i class="chip drift">drift</i></td></tr>
+      <tr><td class="name">Cook two recipes at once</td><td class="why">A menu for guests means two open recipes. Mostly solved by cook mode plus a quick switch between two recent recipes. Not its own feature yet.</td><td><i class="chip quiet">fits if quiet</i></td></tr>
+      <tr><td class="name">Serving history</td><td class="why">"Last time: 6" above the stepper. Once servings persist, this is nearly free. Keep it to the number, no chart.</td><td><i class="chip fit">fits</i></td></tr>
+      <tr><td class="name">Ingredient name normalization</td><td class="why">"Plain flour" and "all-purpose flour" as one search term. Clever, and a maintenance sink. Diacritic-insensitive search covers most of the real cases.</td><td><i class="chip drift">drift</i></td></tr>
+      <tr><td class="name">Nutrition</td><td class="why">Schema.org carries it, so it is tempting. The numbers on blogs are guesses, and the moment they show the app is a tracker. No.</td><td><i class="chip drift">drift</i></td></tr>
+      <tr><td class="name">Pantry, "what can I cook with what I have"</td><td class="why">Nobody keeps a pantry inventory current for more than two weeks. No.</td><td><i class="chip drift">drift</i></td></tr>
+      <tr><td class="name">Voice "next step"</td><td class="why">Speech recognition on Android goes through Google services more often than not. Tap-anywhere in cook mode solves the wet-hands problem without it.</td><td><i class="chip drift">drift</i></td></tr>
+      <tr><td class="name">Substitution hints</td><td class="why">A content project, not a feature. Someone has to write and maintain the table. Notes on the recipe already hold "used oat flour, fine".</td><td><i class="chip drift">drift</i></td></tr>
+      <tr><td class="name">Ratings, one to five stars</td><td class="why">"Made it" with a date and a line of notes is the paper way. Stars make it an app store.</td><td><i class="chip drift">drift</i></td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h2>Rejected, and why</h2>
+  <p>Things a persona asked for that I would not build. Each one either breaks a line the vision draws on purpose, or undoes a decision the code already made for a reason written down next to it.</p>
+  <ul>
+    <li><b>Any sync server or account.</b> The backup file through the system picker already reaches Google Drive, Nextcloud and a USB stick. An account would add a dependency to get the same result.</li>
+    <li><b>Cloud or model-based parsing.</b> Anton ruled it out, and the fixture-driven parser is the reason the app can promise offline and private.</li>
+    <li><b>Notes or site favicons on the library card.</b> The card is at its width limit already; the UI notes record that even a slightly larger meta line truncated "15 stuks". More on the card means less on the card.</li>
+    <li><b>Boolean or fuzzy search syntax.</b> Accent-insensitive matching fixes the real misses. "spicy NOT thai" is for a search engine.</li>
+    <li><b>Per-palette darkness sliders.</b> The six palettes are hand-checked against ten contrast pairs in both schemes. A slider throws that away for a preference almost nobody sets.</li>
+    <li><b>An onboarding carousel.</b> The empty state already teaches the one gesture that matters. One hint for long-press is the whole tutorial.</li>
+    <li><b>Dynamic colour.</b> Already decided against in the UI notes, for the right reason. The paper is the identity.</li>
+    <li><b>A dashboard home screen with "recently cooked", "suggested for tonight", "your stats".</b> The library is the home screen. It is a book, not a feed.</li>
+  </ul>
+
+  <h2>Where the personas were wrong</h2>
+  <p>Haiku agents reading code make mistakes, and passing those on would waste Anton's time. These claims did not survive a look at the code.</p>
+  <ul>
+    <li><b>"No duplicate detection."</b> There is. The repository normalizes the URL and returns <code>AlreadySaved</code>; the share sheet says "Already in there".</li>
+    <li><b>"The byline shows 24Kitchen twice."</b> <code>RecipeScreen</code> already dedupes author and site case-insensitively.</li>
+    <li><b>"Refetch throws away my notes."</b> It keeps notes, favourite and ticks explicitly. It does replace hand-edited ingredients and steps, which is the real, smaller issue listed under medium.</li>
+    <li><b>"Tags are dead data."</b> They are searched and two of them are shown on the detail screen. What is true is that they cannot be filtered on or edited.</li>
+    <li><b>"No way to search by time."</b> Sorting by quickest exists. A filter chip does not, and that is the small item above.</li>
+    <li><b>"The stepper buttons are 18dp."</b> The icon is. The touch target is the standard 48dp. The fix is visual, which is why it sits under quality of life.</li>
+  </ul>
+
+  <h2>Two things I would watch</h2>
+  <p>First, the labels feature and the shopping list both want to break the "two actions in selection mode" rule. Break it once, for labels, and hold the line after that. Second, three of the medium items add a column each. Batch them into one migration to version 2 rather than shipping versions 2, 3 and 4 in a month. The schema is checked in for exactly this reason.</p>
+
+  <p class="meta">Sources for the judgments: README.md, the ten pages under .claude/knowledge, strings.xml in both languages, Recipe.kt, RecipeRepository.kt, the four screens and the ViewModel, plus the six persona reports. Nothing in this report was verified on a device; the scroll-position item should be checked on the emulator before it is believed. One persona-free claim of mine was already wrong and removed: scaled amounts do follow the locale, so Dutch readers already see "1,5".</p>
+</main>
