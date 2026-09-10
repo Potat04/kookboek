@@ -95,6 +95,9 @@ class KookboekViewModel(private val repo: RecipeRepository) : ViewModel() {
 
     fun byId(id: String?): Recipe? = repo.byId(id)
 
+    /** A plain word in the snackbar from a screen that has something to report. */
+    fun notify(text: UiText) { toasts.trySend(Toast(text)) }
+
     fun setQuery(value: String) { _query.value = value }
     fun toggleFavouritesFilter() { _favouritesOnly.value = !_favouritesOnly.value }
     fun setSort(order: SortOrder) { _sort.value = order }

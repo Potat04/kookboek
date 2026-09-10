@@ -91,8 +91,11 @@ aparte, grotere verandering, en dan raak je elk scherm.
 
 ## Navigatie
 
-`MainActivity` gebruikt `navigation-compose` met vier bestemmingen: bibliotheek, recept, bewerken,
-instellingen.
+`MainActivity` gebruikt `navigation-compose` met vijf bestemmingen: bibliotheek, recept, koken,
+bewerken, instellingen. `cook/{id}` komt bovenop `recipe/{id}` te liggen, dus Terug (en het
+kruisje) zetten je terug bij hetzelfde recept. Net als de andere bestemmingen met een id heeft
+het de `LeaveWhenGone`-wacht: verdwijnt het recept onder je vandaan, dan loopt het scherm weg in
+plaats van leeg te blijven staan.
 `ShareActivity` is een losse activity met een doorzichtig thema (`Theme.Kookboek.Sheet`), zodat
 het deelvenster over je browser zweeft in plaats van de hele app te openen.
 
