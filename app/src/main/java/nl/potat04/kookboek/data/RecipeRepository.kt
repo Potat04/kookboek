@@ -6,6 +6,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
 import nl.potat04.kookboek.parse.ParsedRecipe
 import nl.potat04.kookboek.parse.RecipeParser
+import java.io.File
+import java.io.InputStream
 import java.net.URI
 import java.util.Locale
 
@@ -22,10 +24,28 @@ sealed interface ImportResult {
     data class Failed(val reason: FailureReason, val url: String?) : ImportResult
 }
 
+/**
+ * Recipes read out of a `.kookboek` file and not yet added.
+ *
+ * They are kept apart from the cookbook until the reader says yes: the pictures sit in
+ * the cache under the names the archive gave them, and the labels are still names
+ * rather than the ids this phone uses.
+ */
+data class IncomingRecipes(
+    val recipes: List<Recipe>,
+    val labelNames: Map<String, List<String>> = emptyMap(),
+    val images: Map<String, File> = emptyMap(),
+)
+
 class RecipeRepository(
     private val store: RecipeStore,
     val images: ImageStore,
     private val pages: PageFetcher,
+    /**
+     * Where the HTML of a page that would not parse is kept, so the reader can send it
+     * on as a fixture. Null switches that off, which is what a test wants.
+     */
+    private val pagesDir: File? = null,
 ) {
     val recipes: StateFlow<List<Recipe>> = store.recipes
     val deleted: StateFlow<List<Recipe>> = store.deleted
@@ -89,13 +109,15 @@ class RecipeRepository(
 
         existingFor(url)?.let { return ImportResult.AlreadySaved(it) }
 
-        val parsed = when (val fetched = fetchAndParse(url)) {
-            is Fetched.Parsed -> fetched.recipe
-            is Fetched.Failed -> return ImportResult.Failed(fetched.reason, url)
+        val fetched = when (val result = fetchAndParse(url)) {
+            is Fetched.Parsed -> result
+            is Fetched.Failed -> return ImportResult.Failed(result.reason, url)
         }
+        val parsed = fetched.recipe
 
         val recipe = parsed.toRecipe(url)
         store.upsert(recipe)
+        keepPage(recipe, fetched.html)
 
         // The picture arrives a moment later; the recipe is already usable without it.
         parsed.imageUrl?.let { imageUrl ->
@@ -114,10 +136,11 @@ class RecipeRepository(
     suspend fun refresh(recipe: Recipe): ImportResult {
         val url = recipe.sourceUrl
             ?: return ImportResult.Failed(FailureReason.NO_SOURCE_URL, null)
-        val parsed = when (val fetched = fetchAndParse(url)) {
-            is Fetched.Parsed -> fetched.recipe
-            is Fetched.Failed -> return ImportResult.Failed(fetched.reason, url)
+        val fetched = when (val result = fetchAndParse(url)) {
+            is Fetched.Parsed -> result
+            is Fetched.Failed -> return ImportResult.Failed(result.reason, url)
         }
+        val parsed = fetched.recipe
 
         val fresh = parsed.toRecipe(url).copy(
             id = recipe.id,
@@ -134,6 +157,7 @@ class RecipeRepository(
             deletedAt = recipe.deletedAt,
         )
         store.upsert(fresh)
+        keepPage(fresh, fetched.html)
         if (recipe.imageFile == null) {
             parsed.imageUrl?.let { imageUrl ->
                 images.download(imageUrl, recipe.id)?.let { name ->
@@ -144,16 +168,97 @@ class RecipeRepository(
         return ImportResult.Saved(store.byId(recipe.id) ?: fresh)
     }
 
+    // -------------------------------------------------------- a file from someone else
+
+    /**
+     * Unpacks a `.kookboek` file. Nothing is stored yet: the recipes come back so the
+     * screen can show what is in there and ask.
+     *
+     * @param into where the pictures are put down until [addIncoming] takes them over.
+     */
+    suspend fun readFile(into: File, open: () -> InputStream): Result<IncomingRecipes> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                into.mkdirs()
+                val files = mutableMapOf<String, File>()
+                val content = open().use { stream ->
+                    RecipeFile.read(stream) { name, bytes ->
+                        val target = File(into, name)
+                        target.writeBytes(bytes)
+                        files[name] = target
+                    }
+                }.getOrThrow()
+                IncomingRecipes(
+                    recipes = content.document.recipes.map { it.toRecipe() },
+                    labelNames = content.document.recipes.associate { it.id to it.labels },
+                    images = files,
+                )
+            }
+        }
+
+    /**
+     * Puts [incoming] in the cookbook, pictures and all. A recipe that is already here
+     * is overwritten, which is what "Replace" means; the screen asks first.
+     *
+     * Labels arrive as names because ids are local to one phone, so they are matched
+     * against the ones already here and only made when there is nothing to match.
+     */
+    suspend fun addIncoming(incoming: IncomingRecipes): Int {
+        var added = 0
+        for (recipe in incoming.recipes) {
+            val labels = incoming.labelNames[recipe.id].orEmpty().mapNotNull { name -> label(name) }
+            val pictures = listOfNotNull(recipe.imageFile, recipe.attachmentFile)
+            for (name in pictures) {
+                incoming.images[name]?.let { images.adopt(it, name) }
+            }
+            store.upsert(
+                recipe.copy(
+                    labels = labels,
+                    // A picture that did not travel would leave a name pointing at
+                    // nothing, and the card would show a grey block instead of a letter.
+                    imageFile = recipe.imageFile?.takeIf { images.file(it).exists() },
+                    attachmentFile = recipe.attachmentFile?.takeIf { images.file(it).exists() },
+                )
+            )
+            added++
+        }
+        return added
+    }
+
+    private suspend fun label(name: String): Label? {
+        val trimmed = name.trim().takeIf { it.isNotBlank() } ?: return null
+        return labels.value.firstOrNull { it.name.equals(trimmed, ignoreCase = true) }
+            ?: createLabel(trimmed)
+    }
+
+    /**
+     * Keeps the page behind a recipe the parser could not fully read.
+     *
+     * New site support starts with a saved page, so the one import that just failed is
+     * the most useful thing there is. It is overwritten on every refetch and lives in
+     * the cache, so it costs nothing to keep and nothing to lose.
+     */
+    private suspend fun keepPage(recipe: Recipe, html: String) {
+        val dir = pagesDir ?: return
+        if (recipe.quality == ParseQuality.FULL) return
+        withContext(Dispatchers.IO) {
+            runCatching {
+                dir.mkdirs()
+                File(dir, "${recipe.id}.html").writeText(html)
+            }.onFailure { Log.w(TAG, "could not keep the page for ${recipe.id}", it) }
+        }
+    }
+
     /** A page that was read, or the reason it was not. */
     private sealed interface Fetched {
-        data class Parsed(val recipe: ParsedRecipe) : Fetched
+        data class Parsed(val recipe: ParsedRecipe, val html: String) : Fetched
         data class Failed(val reason: FailureReason) : Fetched
     }
 
     private suspend fun fetchAndParse(url: String): Fetched =
         when (val page = pages.fetch(url, acceptLanguage())) {
             is FetchResult.Page -> withContext(Dispatchers.Default) {
-                Fetched.Parsed(RecipeParser.parse(page.html, url))
+                Fetched.Parsed(RecipeParser.parse(page.html, url), page.html)
             }
             FetchResult.Blocked -> {
                 Log.w(TAG, "$url is behind a bot check we could not get past")

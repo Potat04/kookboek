@@ -1,0 +1,35 @@
+<resources>
+    <!--
+      Sending a recipe out of the app, and taking one in: as text, as a .kookboek file,
+      or onto paper. English, and the fallback for every language the app does not have.
+      Dutch is in res/values-nl/strings_share.xml, key for key.
+    -->
+
+    <!-- The overflow menu on a recipe -->
+    <string name="share_as_text">Share as text</string>
+    <string name="share_as_file">Send as Kookboek file</string>
+    <string name="share_print">Print</string>
+
+    <plurals name="share_chooser_title">
+        <item quantity="one">Share recipe</item>
+        <item quantity="other">Share %d recipes</item>
+    </plurals>
+    <string name="share_file_failed">Could not make the file</string>
+    <string name="share_print_unavailable">This phone has nothing to print with</string>
+
+    <!-- On a recipe the parser could not read: send the page on so it can be taught. -->
+    <string name="share_help_site">Help Kookboek read this site</string>
+
+    <!-- Someone sent you a .kookboek file -->
+    <string name="share_open_label">Open in Kookboek</string>
+    <string name="share_open_reading">Opening the file…</string>
+    <string name="share_open_title">Add to your cookbook?</string>
+    <string name="share_open_add">Add to cookbook</string>
+    <string name="share_open_replace">Replace</string>
+    <plurals name="share_open_count">
+        <item quantity="one">%d recipe in this file</item>
+        <item quantity="other">%d recipes in this file</item>
+    </plurals>
+    <string name="share_open_failed">That file could not be read</string>
+    <string name="share_open_newer">This file comes from a newer Kookboek</string>
+</resources>

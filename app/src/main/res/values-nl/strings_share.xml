@@ -1,0 +1,35 @@
+<resources>
+    <!--
+      Een recept de app uit sturen, en er een binnenkrijgen: als tekst, als
+      .kookboek-bestand, of op papier. Sleutel voor sleutel gelijk aan
+      res/values/strings_share.xml.
+    -->
+
+    <!-- Het menu op een recept -->
+    <string name="share_as_text">Delen als tekst</string>
+    <string name="share_as_file">Versturen als Kookboek-bestand</string>
+    <string name="share_print">Afdrukken</string>
+
+    <plurals name="share_chooser_title">
+        <item quantity="one">Recept delen</item>
+        <item quantity="other">%d recepten delen</item>
+    </plurals>
+    <string name="share_file_failed">Kon het bestand niet maken</string>
+    <string name="share_print_unavailable">Deze telefoon heeft niets om mee af te drukken</string>
+
+    <!-- Op een recept dat de parser niet kon lezen: stuur de pagina door. -->
+    <string name="share_help_site">Help Kookboek deze site lezen</string>
+
+    <!-- Iemand stuurde je een .kookboek-bestand -->
+    <string name="share_open_label">Openen in Kookboek</string>
+    <string name="share_open_reading">Bestand openen…</string>
+    <string name="share_open_title">Toevoegen aan je kookboek?</string>
+    <string name="share_open_add">Toevoegen aan kookboek</string>
+    <string name="share_open_replace">Vervangen</string>
+    <plurals name="share_open_count">
+        <item quantity="one">%d recept in dit bestand</item>
+        <item quantity="other">%d recepten in dit bestand</item>
+    </plurals>
+    <string name="share_open_failed">Dat bestand kon niet gelezen worden</string>
+    <string name="share_open_newer">Dit bestand komt uit een nieuwere Kookboek</string>
+</resources>

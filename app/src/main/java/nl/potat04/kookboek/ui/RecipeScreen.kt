@@ -27,6 +27,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
@@ -35,6 +36,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
@@ -54,12 +56,14 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -67,6 +71,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import nl.potat04.kookboek.R
 import nl.potat04.kookboek.data.ParseQuality
 import nl.potat04.kookboek.data.Recipe
@@ -184,6 +189,7 @@ fun RecipeScreen(
         if (recipe.quality == ParseQuality.LINK_ONLY) {
             item {
                 CouldNotRead(
+                    recipe = recipe,
                     hasSource = recipe.sourceUrl != null,
                     onOpen = { recipe.sourceUrl?.let { context.openLink(it) } },
                     onRetry = onRefresh,
@@ -330,6 +336,9 @@ private fun DetailBar(
         IconButton(onClick = onEdit) {
             Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.action_edit))
         }
+        val context = LocalContext.current
+        val images = LocalImageStore.current
+        val scope = rememberCoroutineScope()
         var menu by remember { mutableStateOf(false) }
         Box {
             IconButton(onClick = { menu = true }) {
@@ -351,6 +360,30 @@ private fun DetailBar(
                         onClick = { menu = false; onRefresh() },
                     )
                 }
+                // Three ways out of the app: to whoever you talk to, to another
+                // Kookboek, and onto paper. See ui/Sharing.kt and ui/PrintRecipe.kt.
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.share_as_text)) },
+                    leadingIcon = { Icon(Icons.Default.Share, contentDescription = null) },
+                    onClick = { menu = false; context.shareRecipeText(listOf(recipe)) },
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.share_as_file)) },
+                    leadingIcon = { Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null) },
+                    onClick = {
+                        menu = false
+                        // Writing the zip is real work, so it waits for a scope rather
+                        // than holding up the menu closing.
+                        scope.launch { images?.let { context.shareRecipeFile(listOf(recipe), it) } }
+                    },
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.share_print)) },
+                    leadingIcon = {
+                        Icon(painterResource(R.drawable.ic_print), contentDescription = null)
+                    },
+                    onClick = { menu = false; context.printRecipe(recipe, images) },
+                )
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.action_delete)) },
                     leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
@@ -545,13 +578,19 @@ private fun NotesField(notes: String, onNotes: (String) -> Unit) {
     )
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun CouldNotRead(
+    recipe: Recipe,
     hasSource: Boolean,
     onOpen: () -> Unit,
     onRetry: () -> Unit,
     onWrite: () -> Unit,
 ) {
+    val context = LocalContext.current
+    // The page behind a failed import is kept in the cache, and it is the one thing
+    // that turns "this site does not work" into something that can be fixed.
+    val keptPage = remember(recipe.id) { context.hasKeptPage(recipe) }
     Surface(
         shape = MaterialTheme.shapes.small,
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -573,7 +612,8 @@ private fun CouldNotRead(
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Spacer(Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            // Flows: four buttons, one of them a whole sentence, never fit on one line.
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 if (hasSource) {
                     TextButton(onClick = onOpen) {
                         Text(stringResource(R.string.recipe_unread_open))
@@ -584,6 +624,11 @@ private fun CouldNotRead(
                 }
                 TextButton(onClick = onWrite) {
                     Text(stringResource(R.string.recipe_unread_write))
+                }
+                if (keptPage) {
+                    TextButton(onClick = { context.sharePage(recipe) }) {
+                        Text(stringResource(R.string.share_help_site))
+                    }
                 }
             }
         }
