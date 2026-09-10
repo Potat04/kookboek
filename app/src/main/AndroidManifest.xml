@@ -156,8 +156,9 @@
         </activity>
 
         <!--
-          The other end of "send as Kookboek file". Our own mime type, plus the
-          octet-stream a chat app falls back to when it does not know the extension.
+          The other end of "send as Kookboek file". Chat apps may send a generic
+          binary or ZIP type with an opaque content URI, so its path cannot be used
+          to check the filename. RecipeFile validates the archive before import.
           No text/plain here on purpose: that filter belongs to ShareActivity alone, and
           two of them would put Kookboek in every chooser on the phone twice over.
         -->
@@ -172,6 +173,9 @@
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="application/vnd.kookboek" />
+                <data android:mimeType="application/octet-stream" />
+                <data android:mimeType="application/zip" />
+                <data android:mimeType="application/x-zip-compressed" />
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
@@ -180,8 +184,8 @@
                 <data android:scheme="content" />
                 <data android:scheme="file" />
                 <data android:host="*" />
-                <data android:mimeType="application/octet-stream" />
-                <data android:pathPattern=".*\\.kookboek" />
+                <data android:mimeType="*/*" />
+                <data android:pathSuffix=".kookboek" />
             </intent-filter>
         </activity>
 

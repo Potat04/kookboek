@@ -92,7 +92,10 @@ class Backup(private val repo: RecipeRepository) {
                         val name = entry.name
                         if (!entry.isDirectory) {
                             when {
-                                name == DOCUMENT -> text = zip.readBytes().decodeToString()
+                                // `recipes.json` is the current name. Early builds used
+                                // the singular form, so accept those backups as well.
+                                name == DOCUMENT || name == LEGACY_DOCUMENT ->
+                                    text = zip.readBytes().decodeToString()
                                 name.startsWith("$IMAGES/") -> {
                                     val file = imageName(name.removePrefix("$IMAGES/"))
                                     if (file != null && repo.images.importFile(file, zip)) images++
@@ -166,6 +169,7 @@ class Backup(private val repo: RecipeRepository) {
         private const val TAG = "Backup"
 
         const val DOCUMENT = "recipes.json"
+        private const val LEGACY_DOCUMENT = "recipe.json"
         const val IMAGES = "images"
 
         /** How many daily files stay in the backup folder. A week is a week of mistakes. */

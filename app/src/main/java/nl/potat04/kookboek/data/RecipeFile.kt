@@ -26,7 +26,7 @@ object RecipeFile {
 
     const val EXTENSION = "kookboek"
 
-    /** Our own type, so the app only turns up in the chooser for its own files. */
+    /** Our own type when sharing; incoming chat attachments may use binary or ZIP types. */
     const val MIME_TYPE = "application/vnd.kookboek"
 
     const val DOCUMENT_ENTRY = "recipe.json"
