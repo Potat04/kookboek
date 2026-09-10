@@ -14,10 +14,32 @@ import java.util.Locale
  * no business knowing which language the reader picked, and a recipe imported today
  * may well be looked at in the other one tomorrow.
  */
-enum class FailureReason { NO_VALID_LINK, FETCH_FAILED, BLOCKED, NO_SOURCE_URL, NOTHING_SHARED }
+enum class FailureReason {
+    /** What was shared is not a link at all. */
+    NO_VALID_LINK,
+    /** The phone is not on a network. */
+    OFFLINE,
+    /** The site answered, but not with the page: a 404, a dead host, a socket that gave up. */
+    FETCH_FAILED,
+    /** A bot check stood in the way and would not step aside. */
+    BLOCKED,
+    /** The check was still running when the clock ran out. */
+    TIMED_OUT,
+    /** The page loaded and holds no recipe: no markup, no lists, nothing to read. */
+    NO_RECIPE_ON_PAGE,
+    /** Asked to re-read a recipe that was never fetched from anywhere. */
+    NO_SOURCE_URL,
+    /** Opened without a link, so there is nothing to do. */
+    NOTHING_SHARED,
+}
 
 sealed interface ImportResult {
-    data class Saved(val recipe: Recipe) : ImportResult
+    /**
+     * [note] is set when the recipe was saved but something is worth saying about it —
+     * a page with no recipe on it still becomes a bookmark, and the reader should hear
+     * why that is all there is.
+     */
+    data class Saved(val recipe: Recipe, val note: FailureReason? = null) : ImportResult
     data class AlreadySaved(val recipe: Recipe) : ImportResult
     data class Failed(val reason: FailureReason, val url: String?) : ImportResult
 }
@@ -103,7 +125,11 @@ class RecipeRepository(
                 store.update(recipe.id) { it.copy(imageFile = fileName) }
             }
         }
-        return ImportResult.Saved(store.byId(recipe.id) ?: recipe)
+        // The link is kept either way — losing the page is worse than saving a bookmark —
+        // but a page we read nothing off is not a recipe, and saying so beats a card
+        // that looks half broken for no stated reason.
+        val note = if (parsed.quality == ParseQuality.LINK_ONLY) FailureReason.NO_RECIPE_ON_PAGE else null
+        return ImportResult.Saved(store.byId(recipe.id) ?: recipe, note)
     }
 
     /**
@@ -117,6 +143,12 @@ class RecipeRepository(
         val parsed = when (val fetched = fetchAndParse(url)) {
             is Fetched.Parsed -> fetched.recipe
             is Fetched.Failed -> return ImportResult.Failed(fetched.reason, url)
+        }
+
+        // A re-read that comes back empty would wipe lines the reader may have typed in
+        // by hand. Say what happened and change nothing.
+        if (parsed.quality == ParseQuality.LINK_ONLY && recipe.hasContent) {
+            return ImportResult.Failed(FailureReason.NO_RECIPE_ON_PAGE, url)
         }
 
         val fresh = parsed.toRecipe(url).copy(
@@ -159,6 +191,11 @@ class RecipeRepository(
                 Log.w(TAG, "$url is behind a bot check we could not get past")
                 Fetched.Failed(FailureReason.BLOCKED)
             }
+            FetchResult.TimedOut -> {
+                Log.w(TAG, "the check on $url was still running when time ran out")
+                Fetched.Failed(FailureReason.TIMED_OUT)
+            }
+            FetchResult.Offline -> Fetched.Failed(FailureReason.OFFLINE)
             FetchResult.Unreachable -> Fetched.Failed(FailureReason.FETCH_FAILED)
         }
 
@@ -218,10 +255,12 @@ fun ParsedRecipe.toRecipe(url: String): Recipe = Recipe(
     author = author,
     description = description,
     imageUrl = imageUrl,
-    // The parser still hands over plain lines; group headings become a domain concern here.
-    ingredients = ingredients.map { Ingredient(it) },
+    ingredients = ingredients,
     steps = steps,
+    prepMinutes = prepMinutes,
+    cookMinutes = cookMinutes,
     totalMinutes = totalMinutes,
+    videoUrl = videoUrl,
     servings = servings,
     servingsLabel = servingsLabel,
     tags = tags,

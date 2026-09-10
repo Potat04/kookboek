@@ -141,7 +141,7 @@
 
     <!-- What went wrong while importing -->
     <string name="error_no_valid_link">Geen geldige link gevonden</string>
-    <string name="error_fetch_failed">Kon de pagina niet ophalen</string>
+    <string name="error_fetch_failed">Kon de pagina niet ophalen. Klopt de link? Probeer het anders zo nog eens.</string>
     <string name="error_blocked">Deze site blokkeerde de app. Open de pagina eerst in je browser en deel hem daarna opnieuw.</string>
     <string name="challenge_title">Deze site controleert je browser</string>
     <string name="challenge_body">Rond de controle hieronder af, dan wordt het recept meteen daarna gelezen.</string>

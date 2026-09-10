@@ -3,6 +3,8 @@ package nl.potat04.kookboek.data
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.SystemClock
 import android.util.Log
 import android.view.ViewGroup
@@ -10,21 +12,35 @@ import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONTokener
 import org.jsoup.Jsoup
+import java.net.ConnectException
+import java.net.UnknownHostException
 import kotlin.coroutines.resume
 
-/** What came back for a page. */
+/**
+ * What came back for a page.
+ *
+ * Told apart on purpose: "we could not reach it" and "the site would not let us in" ask
+ * different things of the reader, and a check that ran out of time is worth trying again
+ * where a refusal is not.
+ */
 sealed interface FetchResult {
     data class Page(val html: String) : FetchResult
     /** A bot check stood in the way and would not step aside. */
     data object Blocked : FetchResult
-    /** No connection, a 404, a timeout. The page itself never arrived. */
+    /** The check was still running when the clock ran out. Trying again often works. */
+    data object TimedOut : FetchResult
+    /** The phone has no way onto the network at all. */
+    data object Offline : FetchResult
+    /** A 404, a dead host, a socket that gave up. The page itself never arrived. */
     data object Unreachable : FetchResult
 }
 
@@ -54,10 +70,18 @@ class PageFetcher(context: Context) {
         return fetchInBrowser(url, acceptLanguage)
     }
 
-    private suspend fun fetchDirect(url: String, acceptLanguage: String): FetchResult =
-        withContext(Dispatchers.IO) {
-            runCatching {
-                val response = Jsoup.connect(url)
+    /**
+     * The plain request.
+     *
+     * [runInterruptible] rather than a bare [withContext]: the reader can call the whole
+     * import off, and a socket sitting in `read()` does not notice a cancelled coroutine
+     * by itself. The thread gets interrupted, the connection drops, and the sheet closes
+     * now instead of at the end of the timeout.
+     */
+    private suspend fun fetchDirect(url: String, acceptLanguage: String): FetchResult {
+        val response = try {
+            runInterruptible(Dispatchers.IO) {
+                Jsoup.connect(url)
                     .userAgent(BrowserIdentity.userAgent(appContext))
                     .header("Accept", ACCEPT)
                     .header("Accept-Language", acceptLanguage)
@@ -67,22 +91,41 @@ class PageFetcher(context: Context) {
                     .timeout(25_000)
                     .maxBodySize(MAX_BODY)
                     .execute()
-
-                val html = response.body()
-                val status = response.statusCode()
-                when {
-                    ChallengePage.isChallenge(
-                        cfMitigated = response.header("cf-mitigated"),
-                        html = html,
-                        status = status,
-                    ) -> FetchResult.Blocked
-                    status in RETRY_IN_BROWSER -> FetchResult.Blocked
-                    status !in 200..299 -> FetchResult.Unreachable
-                    else -> FetchResult.Page(html)
-                }
-            }.onFailure { Log.w(TAG, "fetch failed for $url", it) }
-                .getOrDefault(FetchResult.Unreachable)
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.w(TAG, "fetch failed for $url", e)
+            return if (isOffline(e)) FetchResult.Offline else FetchResult.Unreachable
         }
+
+        val html = response.body()
+        val status = response.statusCode()
+        return when {
+            ChallengePage.isChallenge(
+                cfMitigated = response.header("cf-mitigated"),
+                html = html,
+                status = status,
+            ) -> FetchResult.Blocked
+            status in RETRY_IN_BROWSER -> FetchResult.Blocked
+            status !in 200..299 -> FetchResult.Unreachable
+            else -> FetchResult.Page(html)
+        }
+    }
+
+    /**
+     * Whether the phone had no way onto the network, rather than the site being at fault.
+     *
+     * The exception says it first: nothing resolves and nothing connects when the radio
+     * is off. [ConnectivityManager] is asked as well, because a captive portal answers
+     * DNS perfectly well and still goes nowhere.
+     */
+    private fun isOffline(e: Throwable): Boolean {
+        if (e is UnknownHostException || e is ConnectException) return true
+        val manager = appContext.getSystemService(ConnectivityManager::class.java) ?: return false
+        val capabilities = manager.getNetworkCapabilities(manager.activeNetwork)
+        return capabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) != true
+    }
 
     /**
      * Loads the page in a WebView and takes the result back out.
@@ -165,18 +208,24 @@ class PageFetcher(context: Context) {
 
                 if (html == null) {
                     Log.w(TAG, "browser could not get past the bot check on $url")
-                    FetchResult.Blocked
+                    FetchResult.TimedOut
                 } else {
                     FetchResult.Page(html)
                 }
+            } catch (e: CancellationException) {
+                // The reader called it off. The finally below still tears the check down.
+                throw e
             } catch (e: Exception) {
                 // A device with the WebView package disabled or updating lands here.
                 Log.w(TAG, "no browser available for $url", e)
-                FetchResult.Unreachable
+                FetchResult.Blocked
             } finally {
                 web?.let { view ->
                     ChallengeStage.clear(view)
                     view.stopLoading()
+                    // A cancelled check is still running scripts; blanking the document
+                    // stops them before the view goes.
+                    view.loadUrl("about:blank")
                     // Destroying a WebView that is still in a view tree crashes; the
                     // screen drops it a frame after the stage empties, so undo the
                     // attachment here rather than trusting the timing.
