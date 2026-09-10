@@ -15,7 +15,7 @@
     <string name="recipe_refetch_edited_body">Je hebt de ingrediënten of stappen zelf aangepast. Opnieuw ophalen zet terug wat de pagina nu zegt. Je notities blijven staan.</string>
     <string name="recipe_refetch_anyway">Toch ophalen</string>
 
-    <string name="recipe_no_clock">Geen klok-app gevonden voor een timer</string>
+    <string name="recipe_no_clock">Kan geen timer starten in de klok-app</string>
 
     <string name="recipe_copy_ingredients">Ingrediënten kopiëren</string>
     <string name="recipe_copied">Ingrediënten gekopieerd</string>

@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.activity.compose.BackHandler
@@ -97,7 +98,9 @@ private fun Kookboek(vm: KookboekViewModel, store: SettingsStore, openRecipe: St
         snackbarHost = { SnackbarHost(snackbars) },
         containerColor = Color.Transparent,
         contentColor = MaterialTheme.colorScheme.onBackground,
-        modifier = Modifier.fillMaxSize(),
+        // Keep scrolling content and controls outside the system navigation buttons.
+        // This consumes the inset so Scaffold does not add the same spacing again.
+        modifier = Modifier.fillMaxSize().navigationBarsPadding(),
     ) { padding ->
         KookboekNavHost(nav, vm, store, padding)
     }

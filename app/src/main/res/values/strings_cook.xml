@@ -7,5 +7,5 @@
     <string name="cook_previous_step">Previous step</string>
     <string name="cook_step_done">Step done</string>
     <string name="cook_timer_started">Timer set</string>
-    <string name="cook_timer_unavailable">No app on this phone takes timers</string>
+    <string name="cook_timer_unavailable">Could not start a timer in the clock app</string>
 </resources>

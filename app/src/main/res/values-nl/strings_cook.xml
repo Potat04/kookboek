@@ -7,5 +7,5 @@
     <string name="cook_previous_step">Vorige stap</string>
     <string name="cook_step_done">Stap klaar</string>
     <string name="cook_timer_started">Timer gezet</string>
-    <string name="cook_timer_unavailable">Geen app op deze telefoon zet een timer</string>
+    <string name="cook_timer_unavailable">Kan geen timer starten in de klok-app</string>
 </resources>

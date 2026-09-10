@@ -62,8 +62,8 @@ fun DurationText(
 }
 
 /**
- * Asks the clock app for a timer, without showing its screen. Returns false when no
- * app on the phone takes timers, so the caller can say so instead of doing nothing.
+ * Asks the clock app for a timer, without showing its screen. Returns false when
+ * no app handles the request or the clock app rejects access.
  */
 fun Context.startTimer(seconds: Int, label: String): Boolean {
     val intent = Intent(AlarmClock.ACTION_SET_TIMER)
@@ -74,6 +74,8 @@ fun Context.startTimer(seconds: Int, label: String): Boolean {
         startActivity(intent)
         true
     } catch (_: ActivityNotFoundException) {
+        false
+    } catch (_: SecurityException) {
         false
     }
 }

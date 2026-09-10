@@ -17,7 +17,7 @@
     <string name="recipe_refetch_edited_body">You changed the ingredients or steps by hand. Fetching again puts back what the page says now. Your notes stay.</string>
     <string name="recipe_refetch_anyway">Fetch anyway</string>
 
-    <string name="recipe_no_clock">No clock app found to take a timer</string>
+    <string name="recipe_no_clock">Could not start a timer in the clock app</string>
 
     <string name="recipe_copy_ingredients">Copy ingredients</string>
     <string name="recipe_copied">Ingredients copied</string>
