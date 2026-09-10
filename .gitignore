@@ -27,5 +27,6 @@ app/release
 # Skills borrowed from elsewhere, kept out of the repo while we try them out.
 # Our own skills are listed below and stay committed.
 /.claude/skills/*
+/.claude/worktrees/
 !/.claude/skills/smoke-test/
 !/.claude/skills/feature-review/

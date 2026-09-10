@@ -79,9 +79,9 @@ class PageFetcher(context: Context) {
      * now instead of at the end of the timeout.
      */
     private suspend fun fetchDirect(url: String, acceptLanguage: String): FetchResult {
-        val response = try {
+        return try {
             runInterruptible(Dispatchers.IO) {
-                Jsoup.connect(url)
+                val response = Jsoup.connect(url)
                     .userAgent(BrowserIdentity.userAgent(appContext))
                     .header("Accept", ACCEPT)
                     .header("Accept-Language", acceptLanguage)
@@ -91,25 +91,26 @@ class PageFetcher(context: Context) {
                     .timeout(25_000)
                     .maxBodySize(MAX_BODY)
                     .execute()
+
+                // Reading the body also closes the network stream; keep both on IO.
+                val html = response.body()
+                val status = response.statusCode()
+                when {
+                    ChallengePage.isChallenge(
+                        cfMitigated = response.header("cf-mitigated"),
+                        html = html,
+                        status = status,
+                    ) -> FetchResult.Blocked
+                    status in RETRY_IN_BROWSER -> FetchResult.Blocked
+                    status !in 200..299 -> FetchResult.Unreachable
+                    else -> FetchResult.Page(html)
+                }
             }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             Log.w(TAG, "fetch failed for $url", e)
-            return if (isOffline(e)) FetchResult.Offline else FetchResult.Unreachable
-        }
-
-        val html = response.body()
-        val status = response.statusCode()
-        return when {
-            ChallengePage.isChallenge(
-                cfMitigated = response.header("cf-mitigated"),
-                html = html,
-                status = status,
-            ) -> FetchResult.Blocked
-            status in RETRY_IN_BROWSER -> FetchResult.Blocked
-            status !in 200..299 -> FetchResult.Unreachable
-            else -> FetchResult.Page(html)
+            if (isOffline(e)) FetchResult.Offline else FetchResult.Unreachable
         }
     }
 
