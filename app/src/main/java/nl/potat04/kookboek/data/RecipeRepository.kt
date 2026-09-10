@@ -28,25 +28,56 @@ class RecipeRepository(
     private val pages: PageFetcher,
 ) {
     val recipes: StateFlow<List<Recipe>> = store.recipes
+    val deleted: StateFlow<List<Recipe>> = store.deleted
+    val labels: StateFlow<List<Label>> = store.labels
     val loaded: StateFlow<Boolean> = store.loaded
 
     suspend fun load() {
         store.load()
-        // Deleting a recipe leaves its picture behind so undo can restore it whole.
-        // Anything still unreferenced by the next launch was really meant to go.
-        images.pruneOrphans(store.recipes.value.mapNotNull { it.imageFile }.toSet())
+        // Deleting a recipe leaves its picture behind so undo can restore it whole, and
+        // a soft-deleted recipe still owns its files. Anything unreferenced by either
+        // list at the next launch was really meant to go.
+        val inUse = (store.recipes.value + store.deleted.value)
+            .flatMap { listOfNotNull(it.imageFile, it.attachmentFile) }
+            .toSet()
+        images.pruneOrphans(inUse)
     }
 
     fun byId(id: String?): Recipe? = store.byId(id)
+
+    fun deletedById(id: String?): Recipe? = store.deletedById(id)
 
     suspend fun save(recipe: Recipe) = store.upsert(recipe)
 
     suspend fun update(id: String, transform: (Recipe) -> Recipe) = store.update(id, transform)
 
-    suspend fun delete(recipe: Recipe) = store.delete(recipe.id)
+    /** Soft: the recipe leaves the library but keeps its rows and picture until purged. */
+    suspend fun delete(recipe: Recipe) = store.softDelete(recipe.id)
 
-    /** Restores a recipe after an undo, picture and all. */
+    suspend fun deleteForever(id: String) = store.deleteForever(id)
+
+    /**
+     * Restores a recipe after an undo, picture and all. The copy handed back was taken
+     * before the delete, so writing it puts the row back exactly as it was, deletedAt
+     * included.
+     */
     suspend fun restore(recipe: Recipe) = store.upsert(recipe)
+
+    suspend fun restoreDeleted(id: String) = store.restoreDeleted(id)
+
+    suspend fun purgeDeleted(olderThanMillis: Long) = store.purgeDeleted(olderThanMillis)
+
+    suspend fun markOpened(id: String) = store.markOpened(id)
+
+    suspend fun createLabel(name: String): Label = store.createLabel(name)
+
+    suspend fun renameLabel(id: String, name: String) = store.renameLabel(id, name)
+
+    suspend fun deleteLabel(id: String) = store.deleteLabel(id)
+
+    suspend fun setLabels(recipeId: String, labelIds: Set<String>) = store.setLabels(recipeId, labelIds)
+
+    suspend fun moveLabel(id: String, newPosition: Int) = store.moveLabel(id, newPosition)
 
     /**
      * Fetches [rawUrl], reads the recipe off it and stores it.
@@ -75,7 +106,11 @@ class RecipeRepository(
         return ImportResult.Saved(store.byId(recipe.id) ?: recipe)
     }
 
-    /** Re-reads the source page for an existing recipe, keeping notes, favourite and checks. */
+    /**
+     * Re-reads the source page for an existing recipe. Everything the reader owns
+     * (notes, favourite, labels, servings cooked for, dates, attached photo) stays;
+     * everything the page owns (lines, times, video, yield) is taken fresh.
+     */
     suspend fun refresh(recipe: Recipe): ImportResult {
         val url = recipe.sourceUrl
             ?: return ImportResult.Failed(FailureReason.NO_SOURCE_URL, null)
@@ -90,6 +125,13 @@ class RecipeRepository(
             favorite = recipe.favorite,
             addedAt = recipe.addedAt,
             imageFile = recipe.imageFile,
+            labels = recipe.labels,
+            cookedServings = recipe.cookedServings,
+            lastCookedAt = recipe.lastCookedAt,
+            editedAt = recipe.editedAt,
+            attachmentFile = recipe.attachmentFile,
+            openedAt = recipe.openedAt,
+            deletedAt = recipe.deletedAt,
         )
         store.upsert(fresh)
         if (recipe.imageFile == null) {
@@ -176,7 +218,8 @@ fun ParsedRecipe.toRecipe(url: String): Recipe = Recipe(
     author = author,
     description = description,
     imageUrl = imageUrl,
-    ingredients = ingredients,
+    // The parser still hands over plain lines; group headings become a domain concern here.
+    ingredients = ingredients.map { Ingredient(it) },
     steps = steps,
     totalMinutes = totalMinutes,
     servings = servings,

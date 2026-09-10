@@ -30,8 +30,14 @@ class Converters {
 }
 
 @Database(
-    entities = [RecipeEntity::class, IngredientEntity::class, StepEntity::class],
-    version = 1,
+    entities = [
+        RecipeEntity::class,
+        IngredientEntity::class,
+        StepEntity::class,
+        LabelEntity::class,
+        RecipeLabelEntity::class,
+    ],
+    version = 2,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)

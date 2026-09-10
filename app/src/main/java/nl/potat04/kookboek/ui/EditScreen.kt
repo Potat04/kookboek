@@ -31,6 +31,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import nl.potat04.kookboek.R
+import nl.potat04.kookboek.data.Ingredient
 import nl.potat04.kookboek.data.ParseQuality
 import nl.potat04.kookboek.data.Recipe
 import nl.potat04.kookboek.data.Step
@@ -52,7 +53,7 @@ fun EditScreen(
     var title by remember { mutableStateOf(original.title) }
     var minutes by remember { mutableStateOf(original.totalMinutes?.toString().orEmpty()) }
     var servings by remember { mutableStateOf(original.servings?.toString().orEmpty()) }
-    var ingredients by remember { mutableStateOf(original.ingredients.joinToString("\n")) }
+    var ingredients by remember { mutableStateOf(ingredientsToText(original.ingredients)) }
     var steps by remember { mutableStateOf(stepsToText(original.steps)) }
     var notes by remember { mutableStateOf(original.notes) }
 
@@ -79,8 +80,7 @@ fun EditScreen(
             Spacer(Modifier.weight(1f))
             Button(
                 onClick = {
-                    val parsedIngredients = ingredients.lines()
-                        .map(String::trim).filter(String::isNotEmpty)
+                    val parsedIngredients = textToIngredients(ingredients)
                     val parsedSteps = textToSteps(steps)
                     val typedServings = servings.trim().toIntOrNull()?.takeIf { it > 0 }
                     // Ticks are stored by position, so they mean nothing once the
@@ -93,6 +93,9 @@ fun EditScreen(
                                 if (listsChanged) emptySet() else original.checkedIngredients,
                             checkedSteps =
                                 if (listsChanged) emptySet() else original.checkedSteps,
+                            // A refetch later can then warn before it overwrites hand-typed lines.
+                            editedAt =
+                                if (listsChanged) System.currentTimeMillis() else original.editedAt,
                             title = title.trim(),
                             totalMinutes = minutes.trim().toIntOrNull()?.takeIf { it > 0 },
                             servings = typedServings,
@@ -210,26 +213,39 @@ private fun Field(
 }
 
 /** Sections survive a round trip through the editor as "# heading" lines. */
-fun stepsToText(steps: List<Step>): String = buildString {
+fun stepsToText(steps: List<Step>): String =
+    linesToText(steps.map { it.text to it.section })
+
+fun textToSteps(text: String): List<Step> =
+    textToLines(text) { line, section -> Step(line, section) }
+
+/** Ingredient groups use the same convention, so a grouped list survives the editor too. */
+fun ingredientsToText(ingredients: List<Ingredient>): String =
+    linesToText(ingredients.map { it.text to it.section })
+
+fun textToIngredients(text: String): List<Ingredient> =
+    textToLines(text) { line, section -> Ingredient(line, section) }
+
+private fun linesToText(lines: List<Pair<String, String?>>): String = buildString {
     var section: String? = null
-    steps.forEach { step ->
-        if (step.section != null && step.section != section) {
+    lines.forEach { (text, heading) ->
+        if (heading != null && heading != section) {
             if (isNotEmpty()) append('\n')
-            append("# ").append(step.section).append('\n')
+            append("# ").append(heading).append('\n')
         }
-        section = step.section
-        append(step.text).append('\n')
+        section = heading
+        append(text).append('\n')
     }
 }.trim()
 
-fun textToSteps(text: String): List<Step> {
+private fun <T> textToLines(text: String, make: (String, String?) -> T): List<T> {
     var section: String? = null
     return text.lines().mapNotNull { raw ->
         val line = raw.trim()
         when {
             line.isEmpty() -> null
             line.startsWith("# ") -> { section = line.removePrefix("# ").trim(); null }
-            else -> Step(line, section)
+            else -> make(line, section)
         }
     }
 }

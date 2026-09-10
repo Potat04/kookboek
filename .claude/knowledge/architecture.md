@@ -20,22 +20,29 @@ MainActivity ──┘                                          │
 `CoroutineScope` vast. Imports draaien in die scope, **niet** in een ViewModel. Het deelvenster mag
 dichtgaan terwijl het ophalen nog loopt, zonder dat het recept verdwijnt.
 
-**`SettingsStore`** zit naast de repository en niet erin. Het gaat over hoe de app eruitziet, niet
-over recepten. Hij hangt aan de Application omdat beide vensters hem nodig hebben. Het
+**`SettingsStore`** zit naast de repository en niet erin. Het gaat over hoe de app eruitziet en
+wat de lezer verder instelde (trillen, sortering, backupmap), niet over recepten. Hij hangt aan de Application omdat beide vensters hem nodig hebben. Het
 deelvenster boven je browser moet in hetzelfde palet opkomen als de app zelf. De activities lezen
 hem rechtstreeks; hij hoeft niet door de ViewModel heen. SharedPreferences en niet DataStore, en
-synchroon gelezen. Het zijn drie waarden en ze moeten er zijn vóór het eerste frame, anders is elke
-koude start één frame in het verkeerde palet.
+synchroon gelezen. Het is een handvol waarden en ze moeten er zijn vóór het eerste frame, anders is
+elke koude start één frame in het verkeerde palet.
 
 **`RecipeRepository`** is de enige plek die weet hoe een import verloopt: URL normaliseren,
 dubbele detecteren, de pagina bij `PageFetcher` opvragen, parsen, opslaan, plaatje ophalen.
 Geeft een `ImportResult` terug (`Saved` / `AlreadySaved` / `Failed`), nooit een exception naar
 de UI.
 
-**`RecipeStore`** is Room erachter en een `StateFlow<List<Recipe>>` ervoor. Heeft ook
-`loaded: StateFlow<Boolean>`, want een lege lijst betekent twee heel verschillende dingen:
-"je hebt geen recepten" en "we hebben nog niet gekeken". De UI mag pas iets beweren als
-`loaded` waar is.
+**`RecipeStore`** is Room erachter en drie `StateFlow`s ervoor: `recipes` (wat de lezer ziet),
+`deleted` (zacht verwijderd, voor "onlangs verwijderd") en `labels` (de eigen labels, op
+volgorde). Heeft ook `loaded: StateFlow<Boolean>`, want een lege lijst betekent twee heel
+verschillende dingen: "je hebt geen recepten" en "we hebben nog niet gekeken". De UI mag pas
+iets beweren als `loaded` waar is. De repository geeft alle drie door en voegt er niets aan toe.
+
+Verwijderen is zacht: `delete` zet `deletedAt`, en `restoreDeleted`, `deleteForever` en
+`purgeDeleted` doen de rest. Labels gaan via `createLabel`, `renameLabel`, `deleteLabel`,
+`moveLabel` en per recept `setLabels(recipeId, labelIds)`. Een `Recipe` draagt zijn labels als
+`List<Label>`; `upsert` schrijft die koppelingen mee, net als de ingrediënten. Zie
+[data.md](data.md).
 
 **`PageFetcher`** haalt de HTML op, langs twee wegen. Eerst een gewoon HTTP-verzoek met Jsoup.
 Dat is wat bijna elke site krijgt en het blijft de eerste poging. Komt daar een botcontrole terug
@@ -55,6 +62,14 @@ het, met `ChallengePage`, de laag die echt te testen is. Zie [parser.md](parser.
 **`Recipe`** (in `data/Recipe.kt`) is het domeinmodel en het enige wat de UI kent. De Room-entities
 in `data/db/` zijn een opslagdetail; er lekt geen `RecipeEntity` naar boven.
 
+**`RecipeJson`** (in `data/RecipeJson.kt`) is het uitwisselformaat: de tekst in een backup en in
+een los `.kookboek`-bestand. Eigen DTO's, niet `Recipe` zelf, want het opslagmodel mag blijven
+schuiven terwijl een bestand van twee jaar geleden nog moet openen. Een envelop met `format`,
+`version`, `exportedAt` en `recipes`; labels reizen als naam, want ids zijn lokaal. `decode`
+geeft een `Result` terug en nooit een exception: onbekende sleutels worden genegeerd, een hogere
+`version` wordt geweigerd met een `DecodeError.NewerVersion`. Zip en bestands-IO horen hier niet;
+dat doet de backup-laag erboven.
+
 ## Er gaat geen taal naar beneden
 
 De onderste lagen weten niet welke taal gekozen is, en horen dat ook niet te weten. Een recept
@@ -65,8 +80,10 @@ Alleen de getallen gaan de database in. Zie [localization.md](localization.md).
 
 ## Waarom het domeinmodel niet gelijk is aan de tabellen
 
-`Recipe` heeft `ingredients: List<String>` en `checkedIngredients: Set<Int>`. In de database zijn
-dat rijen met een `position` en een `checked`-vlag. De mapping zit in `data/db/`.
+`Recipe` heeft `ingredients: List<Ingredient>` (tekst plus een optionele groepskop, net als
+`Step`) en `checkedIngredients: Set<Int>`. In de database zijn dat rijen met een `position` en een
+`checked`-vlag. De mapping zit in `data/db/`. De parser levert nog kale regels; die worden
+`Ingredient` in `ParsedRecipe.toRecipe()`.
 
 Dat is bewust. De opslag ging van JSON naar Room zonder dat de UI iets merkte. Wil je het
 domeinmodel op de tabellen laten lijken (afvinkstatus ín de ingrediëntregel), dan is dat een

@@ -14,6 +14,25 @@ data class Step(
 )
 
 @Serializable
+data class Ingredient(
+    val text: String,
+    /** Heading this line belongs to, e.g. "Voor de dressing". Null when the list has no groups. */
+    val section: String? = null,
+)
+
+/**
+ * A reader's own label, shared across recipes. Distinct from [Recipe.tags], which
+ * are the site's words and stay read-only. [position] is the order the reader put
+ * them in; it is not derived from the name.
+ */
+@Serializable
+data class Label(
+    val id: String = UUID.randomUUID().toString(),
+    val name: String,
+    val position: Int = 0,
+)
+
+@Serializable
 data class Recipe(
     val id: String = UUID.randomUUID().toString(),
     val title: String,
@@ -24,21 +43,43 @@ data class Recipe(
     /** File name inside the app's images dir. Null when there is no picture. */
     val imageFile: String? = null,
     val imageUrl: String? = null,
-    val ingredients: List<String> = emptyList(),
+    val ingredients: List<Ingredient> = emptyList(),
     val steps: List<Step> = emptyList(),
+    /** Kept apart from [totalMinutes] when the page gives both; the total stays the one shown. */
+    val prepMinutes: Int? = null,
+    val cookMinutes: Int? = null,
     val totalMinutes: Int? = null,
     val servings: Int? = null,
     /** Original yield text, e.g. "15 stuks" — kept because it is often more informative than a number. */
     val servingsLabel: String? = null,
     val tags: List<String> = emptyList(),
+    val labels: List<Label> = emptyList(),
     val notes: String = "",
     val favorite: Boolean = false,
     val addedAt: Long = System.currentTimeMillis(),
     val checkedIngredients: Set<Int> = emptySet(),
     val checkedSteps: Set<Int> = emptySet(),
     val quality: ParseQuality = ParseQuality.FULL,
+    /** Where the reader last left the servings stepper, so reopening does not reset it. */
+    val cookedServings: Int? = null,
+    /** Last "made it" tap, epoch millis. */
+    val lastCookedAt: Long? = null,
+    /** Last hand edit of ingredients or steps, so a refetch can warn before overwriting them. */
+    val editedAt: Long? = null,
+    val videoUrl: String? = null,
+    /**
+     * Set when the reader deletes the recipe. The row stays until it is purged or
+     * restored; the normal list never shows it.
+     */
+    val deletedAt: Long? = null,
+    /** A photographed recipe card kept beside the typed version, as a file in the images dir. */
+    val attachmentFile: String? = null,
+    /** First time the recipe screen was opened. Null means never. */
+    val openedAt: Long? = null,
 ) {
     val hasContent: Boolean get() = ingredients.isNotEmpty() || steps.isNotEmpty()
+
+    val isDeleted: Boolean get() = deletedAt != null
 
     /** Everything the search box should look through. */
     fun searchBlob(): String = buildString {
@@ -47,7 +88,8 @@ data class Recipe(
         author?.let { append(it).append(' ') }
         description?.let { append(it).append(' ') }
         tags.forEach { append(it).append(' ') }
-        ingredients.forEach { append(it).append(' ') }
+        labels.forEach { append(it.name).append(' ') }
+        ingredients.forEach { append(it.text).append(' ') }
         append(notes)
     }.lowercase()
 

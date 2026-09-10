@@ -2,7 +2,8 @@
 
 De app spreekt Nederlands en Engels. Engels staat in `res/values/strings.xml`, het
 ongekwalificeerde bestand en daarmee de **fallback**. Nederlands staat in
-`res/values-nl/strings.xml`. De twee moeten sleutel voor sleutel gelijk blijven.
+`res/values-nl/strings.xml`. De twee moeten sleutel voor sleutel gelijk blijven. Sinds de
+tweede feature-ronde staan nieuwe strings per feature in `strings_<feature>.xml`, zie onder.
 
 Staat de telefoon op een derde taal, dan krijg je dus **Engels**. Dat is met opzet: wie zijn
 telefoon op Duits heeft staan kan waarschijnlijk wél Engels lezen en vrijwel zeker geen Nederlands.
@@ -56,6 +57,12 @@ De inhoud van een recept wordt natuurlijk nooit vertaald. Een Nederlandse site g
 ingrediënten, ook als de app op Engels staat.
 
 ## Een string toevoegen
+
+Elke feature heeft zijn eigen paar bestanden: `res/values/strings_<feature>.xml` en
+`res/values-nl/strings_<feature>.xml`. Android voegt alle xml in een map samen, en
+`StringResourcesTest` leest ook elk bestand in de map; een sleutel die in twee bestanden van
+dezelfde map staat laat de test falen. Zo kunnen meerdere mensen tegelijk strings toevoegen
+zonder in `strings.xml` te botsen.
 
 1. Zet hem in **beide** bestanden, met dezelfde sleutel: `values/` (Engels) én `values-nl/`.
 2. Verandert een getal de tekst, gebruik `<plurals>`, in beide talen alleen `one` en `other`.

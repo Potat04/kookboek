@@ -17,6 +17,10 @@ import java.io.File
  *
  * English is the unqualified default — the fallback for any language the app does not
  * have — and Dutch is the translation. See .claude/knowledge/localization.md.
+ *
+ * Strings may be spread over several files per folder (`strings.xml`,
+ * `strings_<feature>.xml`); Android merges them, and so does this. A key declared in two
+ * files of one folder is a build error on the Android side, and a failure here first.
  */
 class StringResourcesTest {
 
@@ -90,29 +94,42 @@ class StringResourcesTest {
 
     private data class Entry(val isPlural: Boolean, val byQuantity: Map<String, String>)
 
+    /** Every `<string>` and `<plurals>` in every xml file of the folder, as one map. */
     private fun parse(folder: String): Map<String, Entry> {
-        val file = resFile("$folder/strings.xml")
-        val doc = Jsoup.parse(file, "UTF-8", "", Parser.xmlParser())
         val out = mutableMapOf<String, Entry>()
-        doc.select("string").forEach {
-            out[it.attr("name")] = Entry(isPlural = false, byQuantity = mapOf("" to it.text()))
+        val declaredIn = mutableMapOf<String, String>()
+        fun declare(key: String, entry: Entry, file: File) {
+            declaredIn.put(key, file.name)?.let { earlier ->
+                error("$folder: \"$key\" is declared in both $earlier and ${file.name}")
+            }
+            out[key] = entry
         }
-        doc.select("plurals").forEach { plural ->
-            out[plural.attr("name")] = Entry(
-                isPlural = true,
-                byQuantity = plural.select("item").associate { it.attr("quantity") to it.text() },
-            )
+        resDir(folder).listFiles { f -> f.extension == "xml" }.orEmpty().sortedBy { it.name }.forEach { file ->
+            val doc = Jsoup.parse(file, "UTF-8", "", Parser.xmlParser())
+            doc.select("resources > string").forEach {
+                declare(it.attr("name"), Entry(isPlural = false, byQuantity = mapOf("" to it.text())), file)
+            }
+            doc.select("resources > plurals").forEach { plural ->
+                declare(
+                    plural.attr("name"),
+                    Entry(
+                        isPlural = true,
+                        byQuantity = plural.select("item").associate { it.attr("quantity") to it.text() },
+                    ),
+                    file,
+                )
+            }
         }
         assertTrue("no strings found in res/$folder", out.isNotEmpty())
         return out
     }
 
     /** Unit tests run from the module directory, but do not depend on it. */
-    private fun resFile(path: String): File =
-        listOf("src/main/res/$path", "app/src/main/res/$path")
+    private fun resDir(folder: String): File =
+        listOf("src/main/res/$folder", "app/src/main/res/$folder")
             .map(::File)
-            .firstOrNull(File::exists)
-            ?: error("cannot find res/$path from ${File("").absolutePath}")
+            .firstOrNull(File::isDirectory)
+            ?: error("cannot find res/$folder from ${File("").absolutePath}")
 
     private fun placeholders(text: String): List<String> =
         PLACEHOLDER.findAll(text).map { it.value }.sorted().toList()

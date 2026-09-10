@@ -39,4 +39,17 @@ data class Settings(
     val palette: PaletteId = PaletteId.SINAASAPPEL,
     val mode: ThemeMode = ThemeMode.SYSTEM,
     val textSize: TextSize = TextSize.NORMAL,
+    val hapticFeedback: Boolean = true,
+    /**
+     * The stored name of the library's sort order. A String and not the enum, because
+     * `SortOrder` lives in the UI layer and carries string resources; the UI maps it.
+     */
+    val librarySort: String? = null,
+    val favouritesOnly: Boolean = false,
+    /** The long-press hint in the library is shown once, then never again. */
+    val holdHintSeen: Boolean = false,
+    /** A SAF tree Uri as a string, granted through the folder picker. Null until chosen. */
+    val backupFolder: String? = null,
+    val lastBackupAt: Long = 0,
+    val autoBackup: Boolean = false,
 )

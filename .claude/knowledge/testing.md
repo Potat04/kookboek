@@ -4,7 +4,7 @@
 ./gradlew :app:testDebugUnitTest
 ```
 
-Vijf testklassen, allemaal zonder Android-runtime:
+De testklassen, allemaal zonder Android-runtime:
 
 - `RecipeParserTest` draait de parser tegen echte, opgeslagen pagina's.
 - `ChallengePageTest` doet hetzelfde voor de botcontrole-herkenning, tegen twee bewaarde
@@ -12,9 +12,14 @@ Vijf testklassen, allemaal zonder Android-runtime:
 - `LauncherIconTest` leest de manifest: elk palet een alias, precies één aan, allemaal naar de
   router. Zie [ui.md](ui.md).
 - `ScalingTest` rekent porties om.
+- `DurationsTest` zoekt tijdsduren in stappen ("25 minuten", "1 hour 20 minutes"), eerst in de
+  stappen van de echte fixtures en dan in een lijst losse zinnen.
+- `RecipeJsonTest` laat een recept heen en terug door het uitwisselformaat gaan en controleert
+  dat een bestand met een hogere `version` netjes geweigerd wordt.
 - `StringResourcesTest` legt `values/` (Engels, de fallback) en `values-nl/` naast elkaar: dezelfde
   sleutels, hetzelfde soort, dezelfde meervoudsvormen, dezelfde placeholders. Die laatste is de
-  enige die écht crasht op een toestel, en geen compiler ziet hem.
+  enige die écht crasht op een toestel, en geen compiler ziet hem. Leest elk xml-bestand in de
+  map, dus ook `strings_<feature>.xml`, en faalt op een sleutel die twee keer voorkomt.
 
 ## Fixtures
 

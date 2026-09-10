@@ -210,8 +210,18 @@ fun RecipeScreen(
                 }
             }
             itemsIndexed(recipe.ingredients) { index, line ->
+                val previous = recipe.ingredients.getOrNull(index - 1)?.section
+                if (line.section != null && line.section != previous) {
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        line.section,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(bottom = 6.dp),
+                    )
+                }
                 CheckLine(
-                    text = if (factor == 1.0) line else Scaling.scale(line, factor),
+                    text = if (factor == 1.0) line.text else Scaling.scale(line.text, factor),
                     checked = index in recipe.checkedIngredients,
                     onToggle = { onToggleIngredient(index) },
                 )
