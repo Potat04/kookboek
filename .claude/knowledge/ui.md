@@ -225,7 +225,7 @@ vinkjes zijn dezelfde als op het receptscherm. Een stap afvinken blijft een bewu
 afvinken bij het doorbladeren zou de stap aankruisen waar je alleen even naar vooruit keek.
 ## Het receptscherm
 
-`ui/RecipeScreen.kt` is één `LazyColumn` met sleutels per item (`"bar"`, `"head"`, `"method"`,
+Staand op een telefoon is `ui/RecipeScreen.kt` één `LazyColumn` met sleutels per item (`"bar"`, `"head"`, `"method"`,
 `"step:3"`, `"notes"`). Die sleutels zijn niet alleen voor Compose: het scherm leest eraan af
 waar je bent. Staat het eerste zichtbare item in de bereiding, dan verschijnt rechtsonder een
 klein pilletje "Ingrediënten" dat een `ModalBottomSheet` opent (`ui/IngredientsSheet.kt`) met
@@ -238,6 +238,27 @@ hetzelfde doen. "Afgevinkte verbergen" op de kop klapt de aangevinkte regels in 
 "3 klaargezet"; de rest houdt zijn volgorde, en een groep waarvan alles is afgevinkt verliest
 ook zijn kopje. Groepskoppen (`GroupHeading`) zijn voor ingrediënten en stappen dezelfde
 `titleMedium` in `primary`.
+
+**Is er breedte, dan ligt het boek open.** Hetzelfde recept op twee pagina's, met de balk en de
+kop (foto, titel, byline) erboven, daaronder links de ingrediënten en rechts de bereiding met de
+notities eronder. Elke kolom scrollt zelf. `ui/WindowWidth.kt` beslist dat uit niets dan het venster: twee pagina's vanaf
+600dp breed, of vanaf 480dp als het venster breder is dan hoog. Puur en getest
+(`PageShapeTest`), dus er hoeft geen window-size-class-bibliotheek bij voor één boolean.
+
+Ligt de telefoon dwars, dan wordt de foto een vierkantje náást de titel in plaats van een band
+erboven, en gaat de titel van `displaySmall` naar `headlineMedium`. Elke centimeter bovenaan
+gaat namelijk van beide pagina's tegelijk af. De tags (tijd, opbrengst, sitetags) staan dan bij
+de ingrediënten en de inleiding boven de bereiding. Dat houdt de kop kort en zet proza bij proza.
+Het pilletje en de sheet zijn weg, want de ingrediënten staan al in beeld.
+
+Twee dingen die het tegenhouden. Een recept zonder ingrediënten blijft één kolom, want een lege
+halve pagina leest als een storing. En de kop is boven de helft van de vensterhoogte scrollbaar,
+zodat een lange titel op "Extra groot" de pagina's er niet af duwt; bij een normale maat valt er
+niets te scrollen.
+
+De onderdelen zelf (`StepRow`, `CheckLine`, `GroupHeading`, `ServingsStepper`, `NotesField`,
+`Byline`, de ingrediënt- en bereidingsblokken) worden één keer opgebouwd en aan beide lezingen
+uitgedeeld. Staand verandert er dus niets, en er is geen tweede kopie die kan gaan afwijken.
 
 Wat het scherm verder onthoudt en doet:
 
