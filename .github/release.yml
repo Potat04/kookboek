@@ -1,0 +1,17 @@
+# Used by GitHub's "Generate release notes" button.
+changelog:
+  exclude:
+    labels:
+      - skip-changelog
+  categories:
+    - title: New features
+      labels:
+        - feature
+        - enhancement
+    - title: Fixes
+      labels:
+        - bug
+        - fix
+    - title: Other changes
+      labels:
+        - "*"
