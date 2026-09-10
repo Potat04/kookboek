@@ -15,6 +15,22 @@ Alles is offline. Geen account, geen server, geen tracking.
 Werkt ook zonder browser: in de app op **Toevoegen** tik je om een link te plakken of zelf een
 recept te schrijven.
 
+## Een recept doorgeven
+
+In het menu op een recept staan drie manieren om het de deur uit te doen:
+
+- **Delen als tekst** stuurt het als bericht naar wat je ook maar gebruikt: WhatsApp, Signal,
+  Discord, mail. Titel, link, porties, ingrediënten en genummerde stappen, leesbaar zoals het is.
+- **Versturen als Kookboek-bestand** maakt een `.kookboek`-bestand: alles wat de app van het
+  recept weet, foto's erbij. Wie het aan de andere kant aantikt en Kookboek heeft, krijgt een
+  venstertje met "Toevoegen aan kookboek" en heeft het recept compleet. Het bestand is versleuteld,
+  maar met een sleutel die in de app zit: het houdt andere apps en per ongeluk bewerken buiten de
+  deur, meer niet.
+- **Afdrukken** zet het op papier of, via dezelfde systeemdialoog, in een PDF.
+
+Kwam een recept er niet uit, dan staat er op dat recept ook **Help Kookboek deze site lezen**. Dat
+stuurt de pagina zelf door, en dat is precies waar ondersteuning voor een nieuwe site mee begint.
+
 ## Hoe het recepten leest
 
 `RecipeParser` probeert vier dingen, in volgorde van betrouwbaarheid, en houdt het beste resultaat:
@@ -70,5 +86,5 @@ prijsgeeft). "Werkt op mijn zelfgeschreven HTML" zegt namelijk niets over het ec
 
 - Geen eigen foto's kiezen bij een handgeschreven recept.
 - Geen boodschappenlijst over meerdere recepten.
-- Alleen `text/plain` in het deelmenu. Dat is wat browsers sturen, en zo blijft Kookboek uit
-  ieder ander deelmenu op je telefoon.
+- Alleen `text/plain` in het deelmenu, plus het eigen `.kookboek`-bestand. Dat eerste is wat
+  browsers sturen; verder blijft Kookboek uit ieder ander deelmenu op je telefoon.
