@@ -645,7 +645,7 @@ private fun DetailBar(
                 // holding up the menu closing.
                 scope.launch { images?.let { context.shareRecipeFile(listOf(recipe), it) } }
             })
-            add(MenuEntry(stringResource(R.string.share_print), null) { context.printRecipe(recipe, images) })
+            add(MenuEntry(stringResource(R.string.share_print), PrintIcon) { context.printRecipe(recipe, images) })
             add(MenuEntry(stringResource(R.string.action_delete), Icons.Default.Delete, onClick = onDelete))
         }
         Box {
