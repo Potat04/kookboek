@@ -160,6 +160,17 @@ Vier dingen om te weten:
 - **De launcher cachet het icoon.** Na het omzetten kan het even duren of een herstart van de
   launcher vragen voordat je het ziet; `cmd package resolve-activity` vertelt je meteen wat er
   echt aan staat. Zie [testing.md](testing.md).
+- **De snelkoppelingen hangen aan de aliassen, niet aan de router.** Lang drukken op het icoon
+  geeft "Favorieten" en "Link plakken" (`res/xml/shortcuts.xml`). Android leest
+  `android.app.shortcuts` van het component dat MAIN/LAUNCHER beantwoordt, en dat is het
+  ingeschakelde alias; `LauncherRouter` heeft zelf geen filter en zou dus niets opleveren, zonder
+  dat je dat in een build of een log ziet. Vandaar dat alle zes de aliassen dezelfde
+  `@xml/shortcuts` noemen: van palet wisselen verplaatst alleen wélk alias ze aanbiedt, en omdat de
+  ids gelijk blijven overleeft een vastgezette snelkoppeling dat. Beide starten `MainActivity` met
+  een extra die `Shortcuts.consume` één keer afleest (net als `EXTRA_OPEN_RECIPE`), en beide landen
+  in de bibliotheek. `LauncherIconTest` controleert de meta-data en de inhoud van `shortcuts.xml`.
+  Het icoontje ernaast is inkt op papier en volgt het palet niet: het is één statisch plaatje, net
+  als het app-icoon, maar het kan geen alias per palet krijgen.
 - **De achtergrondkleur is het lichte `primary` van dat palet**, en staat als
   `@color/launcher_<palet>` in `colors.xml`. Een launcher-icoon is één statisch plaatje, dus het
   kan het palet volgen maar niet licht/donker. Verander je een accent, verander het daar dan mee.
@@ -184,16 +195,66 @@ donkerstand, en crèmewit papier natekenen betekent een vel volspuiten om niets 
 overal, een lijn onder de titel, en op breed papier de ingrediënten naast de bereiding. Het is de
 enige plek in de app waar de paletregels bewust niet gelden.
 
+## Wat de bibliotheek onthoudt
+
+De sortering en de favorietenfilter staan de volgende keer nog zoals je ze zette
+(`Settings.librarySort` en `favouritesOnly`; de ViewModel leest ze bij het opstarten uit de
+`SettingsStore` en schrijft bij elke wijziging terug). De zoekopdracht juist níet: die gaat over het
+ene ding waar je een minuut geleden naar zocht, en een kookboek dat morgen nog dichtgefilterd
+openstaat leest als een leeg kookboek.
+
+Terug wist eerst de zoekopdracht en laat het veld los; pas een tweede keer verlaat je het scherm.
+Dat is dezelfde `BackHandler`-volgorde als bij de selectie, en die twee staan naast elkaar op de
+bibliotheek-route in `MainActivity`.
+
+De scrollpositie hoort bij de route, niet bij het scherm: `rememberLazyListState()` staat in
+`composable("library")` en gaat als `listState` naar binnen. navigation-compose bewaart de saveable
+state van een bestemming zolang die op de backstack staat, dus een recept openen en teruggaan komt
+uit op dezelfde kaart.
+
+**Zoeken kijkt niet naar accenten.** `data/Search.kt` heeft `foldForSearch`: NFD, combinerende
+tekens eruit, kleine letters. `Recipe.searchBlob()` en de query gaan er allebei doorheen, dus
+"creme" vindt "crème fraîche" en "jalapeno" vindt "jalapeño". Een letter die geen basis-plus-teken
+is blijft heel ("ß", "ø"), want daar valt geen accent af te halen. Puur en getest
+(`SearchFoldingTest`).
+
+Twee dingen op een kaart die geen regel kosten. Een half gelezen import die nog nooit geopend is
+(`quality == PARTIAL` en `openedAt == null`) krijgt een stipje in de hoek van de foto, weg zodra je
+hem opent; de metaregel is één regel breed en elk woord daarop is al nodig. En de regel bij een
+`LINK_ONLY`-recept staat in `onSurfaceVariant` en niet in `error`, met de actie erin ("alleen de
+link, tik om aan te vullen"): dat de site zijn recept niet gaf is een toestand van de kaart, geen
+fout van de lezer.
+
+De eerste keer dat er twee of meer recepten staan komt er één gedempte regel onder het zoekveld die
+zegt dat je een kaart kunt vasthouden. `Settings.holdHintSeen` gaat aan bij de eerste selectie en
+daarna is hij weg. Lang drukken is het enige in de bibliotheek dat je niet kunt vinden door te
+kijken.
+
 ## Meerdere recepten tegelijk
 
 Lang drukken op een kaart in de bibliotheek begint een selectie; daarna voegt een gewone tik toe
-en haalt weer weg. De kop wordt dan een balk met "N geselecteerd", een kruisje, en dezelfde twee
-acties die één recept in zijn eigen menu heeft: opnieuw ophalen en verwijderen. De plusknop gaat
-weg zolang je kiest, en Terug laat de selectie los in plaats van het scherm.
+en haalt weer weg. De kop wordt dan een balk met "N geselecteerd", een kruisje, en dezelfde acties
+die één recept in zijn eigen menu heeft: opnieuw ophalen, delen als tekst, versturen als
+Kookboek-bestand, en verwijderen. De plusknop gaat weg zolang je kiest, en Terug laat de selectie
+los in plaats van het scherm.
 
-Waarom precies die twee acties: wie tien mislukte imports opruimt wil ze weggooien of alsnog goed
-ophalen, en dat zijn de dingen die een recept ook los aanbiedt. Een derde manier verzinnen zou
-betekenen dat je twee dingen moet onthouden.
+Waarom juist deze: wie tien mislukte imports opruimt wil ze weggooien of alsnog goed ophalen, en
+wie een stapel recepten naar zijn moeder stuurt wil dat in één keer. Alle vier staan ze ook op een
+los recept, in dezelfde woorden, dus er is niets extra's te onthouden.
+
+Ophalen en verwijderen staan op de balk; de twee manieren naar buiten zitten achter een
+overloopmenu ernaast. Vijf knoppen plus de teller passen niet op 360dp bij "Extra groot", en de
+teller is het deel dat leesbaar moet blijven. Verwijderen blijft rechts staan.
+
+**Wat mislukte blijft geselecteerd.** Na "opnieuw ophalen" wordt de selectie niet leeggemaakt maar
+teruggebracht tot de recepten waarbij het misging, en de snackbar zegt "3 bijgewerkt, 2 mislukt en
+nog geselecteerd". Een getal waar je niets mee kunt is geen bericht: zo tik je nog eens op ophalen
+of gooi je die twee weg, zonder ze tussen vijftig kaarten terug te zoeken.
+
+De selectie leest uit álle levende recepten, niet uit wat de lijst laat zien. Kies er vijf, typ dan
+iets in de zoekbalk of zet Favorieten aan, en wat uit beeld schuift blijft gekozen. Uit de zichtbare
+lijst lezen liet die stilletjes vallen bij het verwijderen, en dat is precies wat een selectie nooit
+mag doen.
 
 Het vinkje staat op de foto, niet naast de tekst. Naast de tekst pakt het de breedte af die
 "15 stuks" nodig heeft en dan valt de opbrengst weg achter een beletselteken.
@@ -319,6 +380,8 @@ geneste `if`s: wie er iets aan toevoegt, voegt één regel toe.
 - **Een botcontrole komt alleen in beeld als hij een tik nodig heeft.** De rest gebeurt buiten
   het zicht, in een seconde of twee. Een browser die zomaar over het deelvenster klapt zou
   precies de belofte breken die de regel hierboven maakt.
+- **Terug doet eerst het kleinste ding.** Op de bibliotheek laat Terug de selectie los, of anders
+  de zoekopdracht, en pas als er niets meer los te laten is verlaat het het scherm.
 - **Ook een selectie verwijderen is terug te draaien.** Eén snackbar, één Ongedaan maken, alles
   terug. Een dialoog vooraf is er niet: die vraagt om bevestiging op het moment dat je het het
   zekerst weet, en helpt niet op het moment daarna.

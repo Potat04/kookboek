@@ -17,12 +17,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Clear
@@ -30,9 +32,11 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -57,6 +61,8 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -80,15 +86,20 @@ fun LibraryScreen(
     onSettings: () -> Unit,
     selection: Set<String>,
     busy: Boolean,
+    showHoldHint: Boolean,
     onToggleSelected: (Recipe) -> Unit,
     onClearSelection: () -> Unit,
     onDeleteSelected: () -> Unit,
     onRefreshSelected: () -> Unit,
+    onShareSelected: () -> Unit,
+    onSendSelected: () -> Unit,
+    listState: LazyListState,
     contentPadding: PaddingValues,
 ) {
     val selecting = selection.isNotEmpty()
     Box(Modifier.fillMaxSize()) {
         LazyColumn(
+            state = listState,
             contentPadding = PaddingValues(
                 start = 20.dp,
                 end = 20.dp,
@@ -104,6 +115,8 @@ fun LibraryScreen(
                         busy = busy,
                         onClear = onClearSelection,
                         onRefresh = onRefreshSelected,
+                        onShare = onShareSelected,
+                        onSend = onSendSelected,
                         onDelete = onDeleteSelected,
                     )
                 } else {
@@ -115,6 +128,17 @@ fun LibraryScreen(
             if (total > 0) {
                 item {
                     SearchField(query, onQuery)
+                    // Said once, under the field, and gone the moment the reader picks
+                    // their first recipe. A long press is the only thing in the library
+                    // you cannot arrive at by looking.
+                    if (showHoldHint) {
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            stringResource(R.string.library_hold_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                     Spacer(Modifier.height(10.dp))
                     FilterRow(favouritesOnly, sort, onToggleFavourites, onSort)
                     Spacer(Modifier.height(6.dp))
@@ -278,8 +302,13 @@ private fun FilterRow(
 /**
  * What the masthead turns into once recipes are picked out.
  *
- * It offers what a single recipe's own menu offers, refetch and delete, so that the way
- * to tidy up ten link-only imports is the way you already know for one.
+ * It offers what a single recipe's own menu offers, refetch, the two ways out of the
+ * app and delete, so that handling ten is handling one ten times over, in the same
+ * words and the same order.
+ *
+ * Refetch and delete stay on the bar because they are what a pile of bad imports is
+ * for. Sharing goes behind the overflow: five buttons and a count do not fit on a
+ * 360dp screen at "Extra groot", and the count is the part that must stay readable.
  */
 @Composable
 private fun SelectionBar(
@@ -287,6 +316,8 @@ private fun SelectionBar(
     busy: Boolean,
     onClear: () -> Unit,
     onRefresh: () -> Unit,
+    onShare: () -> Unit,
+    onSend: () -> Unit,
     onDelete: () -> Unit,
 ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -310,6 +341,28 @@ private fun SelectionBar(
                 tint = if (busy) MaterialTheme.colorScheme.outline
                 else MaterialTheme.colorScheme.onSurfaceVariant,
             )
+        }
+        var menu by remember { mutableStateOf(false) }
+        Box {
+            IconButton(onClick = { menu = true }) {
+                Icon(
+                    Icons.Default.MoreVert,
+                    contentDescription = stringResource(R.string.action_more),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.share_as_text)) },
+                    leadingIcon = { Icon(Icons.Default.Share, contentDescription = null) },
+                    onClick = { menu = false; onShare() },
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.share_as_file)) },
+                    leadingIcon = { Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null) },
+                    onClick = { menu = false; onSend() },
+                )
+            }
         }
         IconButton(onClick = onDelete) {
             Icon(
@@ -349,6 +402,21 @@ private fun RecipeCard(
                     title = recipe.title,
                     modifier = Modifier.size(78.dp),
                 )
+                // Half a recipe that has never been opened gets a dot in the corner, so
+                // the reader can see at a glance which imports still want a look. It
+                // rides on the picture for the same reason the tick does: the meta line
+                // is one line wide and every word on it is already earning its place.
+                if (recipe.quality == ParseQuality.PARTIAL && recipe.openedAt == null) {
+                    val label = stringResource(R.string.library_partial)
+                    Box(
+                        Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(4.dp)
+                            .size(9.dp)
+                            .background(MaterialTheme.colorScheme.primary, CircleShape)
+                            .semantics { contentDescription = label },
+                    )
+                }
                 // On the picture rather than in the row: a tick beside the text would
                 // steal the width that "15 stuks" needs and truncate the yield away.
                 if (selected) {
@@ -387,10 +455,13 @@ private fun RecipeCard(
                 )
                 if (recipe.quality == ParseQuality.LINK_ONLY) {
                     Spacer(Modifier.height(5.dp))
+                    // Muted ink and not error red: the site would not give up its
+                    // recipe, which is a state the card is in, not a fault of the
+                    // reader's to be warned about. The line says what to do instead.
                     Text(
                         stringResource(R.string.library_link_only),
                         style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.error,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }

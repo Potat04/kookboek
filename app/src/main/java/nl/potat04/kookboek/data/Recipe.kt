@@ -81,7 +81,10 @@ data class Recipe(
 
     val isDeleted: Boolean get() = deletedAt != null
 
-    /** Everything the search box should look through. */
+    /**
+     * Everything the search box should look through, folded the way [foldForSearch]
+     * folds the query: lower case and without accents, so "creme" finds "crème".
+     */
     fun searchBlob(): String = buildString {
         append(title).append(' ')
         siteName?.let { append(it).append(' ') }
@@ -91,7 +94,7 @@ data class Recipe(
         labels.forEach { append(it.name).append(' ') }
         ingredients.forEach { append(it.text).append(' ') }
         append(notes)
-    }.lowercase()
+    }.let(::foldForSearch)
 
     // The wording for the time and the yield lives in ui/Labels.kt: a recipe is kept
     // for years and read in whichever language is set today, so only the numbers

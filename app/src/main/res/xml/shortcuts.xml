@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  What a long press on the app icon offers. Two things, both of which land in the
+  library: the shelf of what you cook most, and the way in for a link you already have.
+
+  Declared on the launcher aliases in AndroidManifest.xml, not on LauncherRouter: the
+  system reads android.app.shortcuts off the component that answers MAIN/LAUNCHER, and
+  that is whichever alias is enabled. All six point here, so switching palettes swaps
+  which alias declares them; the ids stay the same, so a pinned shortcut survives it.
+
+  Both start MainActivity with an extra rather than an activity of their own; Shortcuts
+  .kt reads the extra once and takes it off the intent. The package and class are spelt
+  out because res/xml gets no manifest placeholders. There is no applicationIdSuffix on
+  any build type, so the literal is the whole truth.
+-->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <shortcut
+        android:shortcutId="favourites"
+        android:enabled="true"
+        android:icon="@mipmap/ic_shortcut_favourites"
+        android:shortcutShortLabel="@string/library_shortcut_favourites_short"
+        android:shortcutLongLabel="@string/library_shortcut_favourites_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="nl.potat04.kookboek"
+            android:targetClass="nl.potat04.kookboek.MainActivity">
+            <extra
+                android:name="shortcut_favourites"
+                android:value="true" />
+        </intent>
+    </shortcut>
+
+    <shortcut
+        android:shortcutId="add_link"
+        android:enabled="true"
+        android:icon="@mipmap/ic_shortcut_add"
+        android:shortcutShortLabel="@string/library_shortcut_add_short"
+        android:shortcutLongLabel="@string/library_shortcut_add_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="nl.potat04.kookboek"
+            android:targetClass="nl.potat04.kookboek.MainActivity">
+            <extra
+                android:name="shortcut_add_link"
+                android:value="true" />
+        </intent>
+    </shortcut>
+
+</shortcuts>

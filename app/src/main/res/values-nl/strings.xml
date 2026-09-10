@@ -41,7 +41,7 @@
     <string name="library_selection_delete">Geselecteerde verwijderen</string>
     <string name="library_selection_refresh">Geselecteerde opnieuw ophalen</string>
     <string name="library_no_info">Geen extra info</string>
-    <string name="library_link_only">alleen de link</string>
+    <string name="library_link_only">alleen de link, tik om aan te vullen</string>
     <string name="library_empty_title">Nog een leeg kookboek</string>
     <string name="library_empty_body">Vind een recept in je browser, tik op Delen en kies Kookboek. De app leest het recept van de pagina en bewaart het hier — ook als de site later offline gaat.</string>
     <string name="library_empty_hint">Of tik op Toevoegen om een link te plakken of zelf een recept te schrijven.</string>
@@ -129,7 +129,7 @@
         <item quantity="one">%d recept bijgewerkt</item>
         <item quantity="other">%d recepten bijgewerkt</item>
     </plurals>
-    <string name="toast_refreshed_partial">%1$d bijgewerkt, %2$d mislukt</string>
+    <string name="toast_refreshed_partial">%1$d bijgewerkt, %2$d mislukt en nog geselecteerd</string>
     <string name="toast_refresh_no_source">Niets op te halen: geen van deze komt van een pagina</string>
     <string name="toast_deleted">\'%s\' verwijderd</string>
     <string name="toast_already_saved">Stond al in je kookboek</string>

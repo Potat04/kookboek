@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The icon for the "Favourites" shortcut: paper with ink on it, masked by the launcher
+  the same way the app icon is. @color/paper is the default palette's light background,
+  and it is the one colour here that is deliberately not palette-bound — see the
+  foreground for why.
+-->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/paper" />
+    <foreground android:drawable="@drawable/ic_shortcut_favourites_foreground" />
+</adaptive-icon>

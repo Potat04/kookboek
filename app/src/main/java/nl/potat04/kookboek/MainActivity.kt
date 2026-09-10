@@ -1,5 +1,6 @@
 package nl.potat04.kookboek
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -7,6 +8,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.activity.compose.BackHandler
@@ -18,10 +20,12 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -30,6 +34,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import kotlinx.coroutines.launch
 import nl.potat04.kookboek.data.Recipe
 import nl.potat04.kookboek.data.SettingsStore
 import nl.potat04.kookboek.ui.AddRecipeSheet
@@ -38,6 +43,7 @@ import nl.potat04.kookboek.ui.DeletedScreen
 import nl.potat04.kookboek.ui.EditScreen
 import nl.potat04.kookboek.ui.KookboekViewModel
 import nl.potat04.kookboek.ui.LibraryScreen
+import nl.potat04.kookboek.ui.LocalImageStore
 import nl.potat04.kookboek.ui.ChallengeOverlay
 import nl.potat04.kookboek.ui.ProvideImageStore
 import nl.potat04.kookboek.ui.RecipeScreen
@@ -45,12 +51,18 @@ import nl.potat04.kookboek.ui.SettingsScreen
 import nl.potat04.kookboek.ui.UpdateHost
 import nl.potat04.kookboek.ui.UpdateSettings
 import nl.potat04.kookboek.ui.resolve
+import nl.potat04.kookboek.ui.shareRecipeFile
+import nl.potat04.kookboek.ui.shareRecipeText
 import nl.potat04.kookboek.ui.setAppLanguage
 import nl.potat04.kookboek.ui.theme.KookboekTheme
 import nl.potat04.kookboek.ui.theme.PaperBackground
 import nl.potat04.kookboek.ui.theme.paintWindowFor
 
 class MainActivity : ComponentActivity() {
+
+    /** What a launcher shortcut asked for, until the navigation has acted on it. */
+    private var shortcut by mutableStateOf<Shortcut?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
@@ -58,6 +70,7 @@ class MainActivity : ComponentActivity() {
         // Consume it: on a rotation the activity is rebuilt, and re-navigating would
         // yank the user back to this recipe after they had walked away from it.
         intent?.removeExtra(ShareActivity.EXTRA_OPEN_RECIPE)
+        shortcut = Shortcuts.consume(intent)
         val store = (application as KookboekApp).settings
         paintWindowFor(store.settings.value)
         setContent {
@@ -65,17 +78,36 @@ class MainActivity : ComponentActivity() {
             KookboekTheme(settings = settings) {
                 val vm: KookboekViewModel = viewModel(factory = KookboekViewModel.Factory)
                 ProvideImageStore(vm.images) {
-                    PaperBackground { Kookboek(vm, store, openRecipe) }
+                    PaperBackground {
+                        Kookboek(vm, store, openRecipe, shortcut) { shortcut = null }
+                    }
                     // Refreshing a recipe can run into a bot check just as importing can.
                     ChallengeOverlay()
                 }
             }
         }
     }
+
+    /**
+     * A shortcut tapped while the app is already running lands here and not in
+     * [onCreate], because this activity is `singleTop` and the launcher brings the
+     * existing task forward rather than starting a second one.
+     */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        Shortcuts.consume(intent)?.let { shortcut = it }
+    }
 }
 
 @Composable
-private fun Kookboek(vm: KookboekViewModel, store: SettingsStore, openRecipe: String?) {
+private fun Kookboek(
+    vm: KookboekViewModel,
+    store: SettingsStore,
+    openRecipe: String?,
+    shortcut: Shortcut?,
+    onShortcutDone: () -> Unit,
+) {
     val nav = rememberNavController()
     val snackbars = remember { SnackbarHostState() }
     val context = LocalContext.current
@@ -106,7 +138,7 @@ private fun Kookboek(vm: KookboekViewModel, store: SettingsStore, openRecipe: St
             // This consumes the inset so Scaffold does not add the same spacing again.
             modifier = Modifier.fillMaxSize().navigationBarsPadding(),
         ) { padding ->
-            KookboekNavHost(nav, vm, store, padding) {
+            KookboekNavHost(nav, vm, store, padding, shortcut, onShortcutDone) {
                 if (updates.enabled) UpdateSettings(updateState, openUpdates)
             }
         }
@@ -119,6 +151,8 @@ private fun KookboekNavHost(
     vm: KookboekViewModel,
     store: SettingsStore,
     padding: PaddingValues,
+    shortcut: Shortcut?,
+    onShortcutDone: () -> Unit,
     updateContent: @Composable () -> Unit,
 ) {
     val all by vm.all.collectAsStateWithLifecycle()
@@ -133,10 +167,38 @@ private fun KookboekNavHost(
 
     // Recipes created by "write it yourself" only hit disk once you save them.
     var draft by remember { mutableStateOf<Recipe?>(null) }
+    // Up here rather than inside the library route, because the "Paste a link" shortcut
+    // opens it from outside the navigation.
+    var addOpen by remember { mutableStateOf(false) }
+
+    // Both shortcuts land on the library: one turns the filter on, the other opens the
+    // sheet. Neither navigates anywhere new, so a reader who was deep in a recipe when
+    // they tapped it comes back to the shelf rather than to a stack they cannot see.
+    LaunchedEffect(shortcut) {
+        when (shortcut) {
+            null -> return@LaunchedEffect
+            Shortcut.FAVOURITES -> {
+                vm.setFavouritesFilter(true)
+                nav.popBackStack("library", inclusive = false)
+            }
+            Shortcut.ADD_LINK -> {
+                nav.popBackStack("library", inclusive = false)
+                addOpen = true
+            }
+        }
+        onShortcutDone()
+    }
 
     NavHost(navController = nav, startDestination = "library") {
         composable("library") {
-            var addOpen by remember { mutableStateOf(false) }
+            val context = LocalContext.current
+            val scope = rememberCoroutineScope()
+            val images = LocalImageStore.current
+            val focus = LocalFocusManager.current
+            // Kept on the route and not inside the screen, so that walking into a recipe
+            // and back lands on the same card. navigation-compose keeps a destination's
+            // saveable state while it is on the back stack; this is that state, named.
+            val listState = rememberLazyListState()
 
             LibraryScreen(
                 recipes = visible,
@@ -152,16 +214,35 @@ private fun KookboekNavHost(
                 onSettings = { nav.navigate("settings") },
                 selection = selection,
                 busy = busy,
+                // Two recipes is the first moment picking several is worth knowing about.
+                showHoldHint = !settings.holdHintSeen && all.size >= 2,
                 onToggleSelected = { vm.toggleSelected(it.id) },
                 onClearSelection = vm::clearSelection,
                 onDeleteSelected = vm::deleteSelected,
                 onRefreshSelected = vm::refreshSelected,
+                // Read at the tap, not held: the selection is ids and the list moves.
+                onShareSelected = { context.shareRecipeText(vm.selectedRecipes()) },
+                onSendSelected = {
+                    val chosen = vm.selectedRecipes()
+                    // Writing the zip is real work, so it waits for a scope rather than
+                    // holding up the menu closing.
+                    images?.let { pictures -> scope.launch { context.shareRecipeFile(chosen, pictures) } }
+                },
+                listState = listState,
                 contentPadding = padding,
             )
 
             // Back drops the selection before it leaves the library, the way every
             // other app that has a selection mode behaves.
             BackHandler(enabled = selection.isNotEmpty()) { vm.clearSelection() }
+
+            // And with something typed, Back empties the search box first. Back out of
+            // a search is what the gesture means everywhere else, and closing the whole
+            // app instead is a long way from what was asked.
+            BackHandler(enabled = selection.isEmpty() && query.isNotEmpty()) {
+                vm.setQuery("")
+                focus.clearFocus()
+            }
 
             if (addOpen) {
                 AddRecipeSheet(

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  De bibliotheek, in het Nederlands. Sleutel voor sleutel gelijk aan
+  res/values/strings_library.xml; StringResourcesTest controleert dat.
+-->
+<resources>
+
+    <string name="library_hold_hint">Houd een kaart vast om er meerdere tegelijk te kiezen.</string>
+
+    <string name="library_partial">Half gelezen, nog niet geopend</string>
+
+    <string name="library_shortcut_favourites_short">Favorieten</string>
+    <string name="library_shortcut_favourites_long">Toon je favorieten</string>
+    <string name="library_shortcut_add_short">Link plakken</string>
+    <string name="library_shortcut_add_long">Plak een link naar een recept</string>
+
+</resources>

@@ -26,6 +26,9 @@ import nl.potat04.kookboek.data.BackupError
 import nl.potat04.kookboek.data.ImportResult
 import nl.potat04.kookboek.data.Recipe
 import nl.potat04.kookboek.data.RecipeRepository
+import nl.potat04.kookboek.data.Settings
+import nl.potat04.kookboek.data.SettingsStore
+import nl.potat04.kookboek.data.foldForSearch
 import java.util.Locale
 
 enum class SortOrder(@param:StringRes val labelRes: Int) {
@@ -46,15 +49,21 @@ data class Toast(
     val actionLabel: UiText? = null,
 )
 
-class KookboekViewModel(private val repo: RecipeRepository) : ViewModel() {
+class KookboekViewModel(
+    private val repo: RecipeRepository,
+    private val settings: SettingsStore,
+) : ViewModel() {
 
     private val _query = MutableStateFlow("")
     val query: StateFlow<String> = _query.asStateFlow()
 
-    private val _favouritesOnly = MutableStateFlow(false)
+    // The two filters open where the reader left them. The search box does not: a query
+    // is about the one thing you were looking for a minute ago, and finding the cookbook
+    // still filtered down to it tomorrow reads as an empty cookbook.
+    private val _favouritesOnly = MutableStateFlow(settings.settings.value.favouritesOnly)
     val favouritesOnly: StateFlow<Boolean> = _favouritesOnly.asStateFlow()
 
-    private val _sort = MutableStateFlow(SortOrder.NEWEST)
+    private val _sort = MutableStateFlow(storedSort(settings.settings.value.librarySort))
     val sort: StateFlow<SortOrder> = _sort.asStateFlow()
 
     private val _busy = MutableStateFlow(false)
@@ -90,7 +99,8 @@ class KookboekViewModel(private val repo: RecipeRepository) : ViewModel() {
 
     val visible: StateFlow<List<Recipe>> =
         combine(repo.recipes, _query, _favouritesOnly, _sort) { recipes, query, favourites, sort ->
-            val words = query.trim().lowercase().split(" ").filter { it.isNotBlank() }
+            // Folded the same way Recipe.searchBlob() is, so "creme" reaches "crème".
+            val words = foldForSearch(query).trim().split(" ").filter { it.isNotBlank() }
             recipes
                 .filter { !favourites || it.favorite }
                 .filter { recipe ->
@@ -111,8 +121,19 @@ class KookboekViewModel(private val repo: RecipeRepository) : ViewModel() {
     fun byId(id: String?): Recipe? = repo.byId(id)
 
     fun setQuery(value: String) { _query.value = value }
-    fun toggleFavouritesFilter() { _favouritesOnly.value = !_favouritesOnly.value }
-    fun setSort(order: SortOrder) { _sort.value = order }
+
+    fun toggleFavouritesFilter() = setFavouritesFilter(!_favouritesOnly.value)
+
+    /** Also the way in from the launcher shortcut. */
+    fun setFavouritesFilter(only: Boolean) {
+        _favouritesOnly.value = only
+        settings.setFavouritesOnly(only)
+    }
+
+    fun setSort(order: SortOrder) {
+        _sort.value = order
+        settings.setLibrarySort(order.name)
+    }
 
     fun toggleFavourite(recipe: Recipe) = viewModelScope.launch {
         repo.update(recipe.id) { it.copy(favorite = !it.favorite) }
@@ -140,15 +161,35 @@ class KookboekViewModel(private val repo: RecipeRepository) : ViewModel() {
 
     fun toggleSelected(id: String) {
         _selection.update { if (id in it) it - id else it + id }
+        // Whoever got this far has found the long press; the hint under the search
+        // field has said its piece and can go.
+        settings.setHoldHintSeen(true)
     }
 
     fun clearSelection() {
         _selection.value = emptySet()
     }
 
-    /** The picked recipes as they stand now, in the order the library shows them. */
-    private fun selected(): List<Recipe> =
-        visible.value.filter { it.id in _selection.value }
+    /**
+     * The picked recipes as they stand now, in the order the library shows them.
+     *
+     * Taken from every live recipe and not from what the list happens to be showing.
+     * Pick five, then type in the search box or turn on Favourites, and the ones that
+     * scroll out of view are still picked. Reading the visible list would quietly drop
+     * them from the delete or the refetch, which is the one thing a selection must never
+     * do. Anything currently off-screen sorts to the end.
+     */
+    private fun selected(): List<Recipe> {
+        val ids = _selection.value
+        if (ids.isEmpty()) return emptyList()
+        val shown = visible.value.withIndex().associate { (index, recipe) -> recipe.id to index }
+        return repo.recipes.value
+            .filter { it.id in ids }
+            .sortedBy { shown[it.id] ?: Int.MAX_VALUE }
+    }
+
+    /** What the selection bar hands to the share sheet, read at the moment of the tap. */
+    fun selectedRecipes(): List<Recipe> = selected()
 
     /** Deletes everything picked, with one undo that brings all of it back. */
     fun deleteSelected() = viewModelScope.launch {
@@ -186,17 +227,20 @@ class KookboekViewModel(private val repo: RecipeRepository) : ViewModel() {
             return@launch
         }
         _busy.value = true
-        var failed = 0
+        val failed = mutableSetOf<String>()
         for (recipe in chosen) {
-            if (repo.refresh(recipe) is ImportResult.Failed) failed++
+            if (repo.refresh(recipe) is ImportResult.Failed) failed += recipe.id
         }
         _busy.value = false
-        clearSelection()
-        val done = chosen.size - failed
+        // The ones that failed stay picked. "2 failed" is a number you can do something
+        // about, tap refetch again or throw them away, and dropping the selection
+        // would leave the reader to find those two again by hand among fifty cards.
+        _selection.value = failed
+        val done = chosen.size - failed.size
         toasts.send(
             Toast(
-                if (failed == 0) UiText.Quantity(R.plurals.toast_refreshed_many, done)
-                else UiText.res(R.string.toast_refreshed_partial, done, failed)
+                if (failed.isEmpty()) UiText.Quantity(R.plurals.toast_refreshed_many, done)
+                else UiText.res(R.string.toast_refreshed_partial, done, failed.size)
             )
         )
     }
@@ -363,11 +407,21 @@ class KookboekViewModel(private val repo: RecipeRepository) : ViewModel() {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as KookboekApp
-                KookboekViewModel(app.repository)
+                KookboekViewModel(app.repository, app.settings)
             }
         }
     }
 }
+
+/**
+ * The stored sort order, or the default when the name is unknown.
+ *
+ * [Settings.librarySort] keeps the name and not the enum: `SortOrder` is a UI thing
+ * with string resources hanging off it, and the settings layer knows nothing about
+ * either. A name that no longer exists means the app changed under a saved preference.
+ */
+private fun storedSort(name: String?): SortOrder =
+    SortOrder.entries.firstOrNull { it.name == name } ?: SortOrder.NEWEST
 
 private fun Set<Int>.toggled(value: Int): Set<Int> =
     if (contains(value)) this - value else this + value
