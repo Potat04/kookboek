@@ -39,6 +39,11 @@ wat sites daadwerkelijk uitleveren.
 
 ### Een nieuwe site toevoegen
 
+Vaak hoef je de pagina niet zelf op te halen. Kwam een import er niet uit (`PARTIAL` of
+`LINK_ONLY`), dan bewaart de repository de rauwe HTML in `cacheDir/pages/<recipeId>.html`, en op dat
+recept staat de knop "Help Kookboek deze site lezen" die hem doorstuurt. Dat is dus meteen de
+fixture, precies zoals de app hem kreeg.
+
 1. Haal de pagina op en zet 'm in `app/src/test/resources/fixtures/<naam>.html`.
 2. Kleed 'm uit: gooi `<style>`, `<svg>`, `<noscript>`, comments en elke `<script>` die géén
    `application/ld+json` is eruit. Dat scheelt een factor drie aan repo-gewicht en haalt niets weg

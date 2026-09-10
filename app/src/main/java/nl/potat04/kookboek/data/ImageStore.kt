@@ -103,6 +103,22 @@ class ImageStore(context: Context) {
     }
 
     /**
+     * Takes a picture that arrived in a `.kookboek` file into the store under the name
+     * the archive gave it.
+     *
+     * The name is the sender's recipe id, so it only ever collides with the same recipe
+     * — which is exactly the case where overwriting is what was asked for.
+     */
+    suspend fun adopt(source: File, name: String): String? = withContext(Dispatchers.IO) {
+        runCatching {
+            val target = File(dir, name)
+            source.copyTo(target, overwrite = true)
+            cache.remove(name)
+            target.name
+        }.onFailure { Log.w(TAG, "could not take over $name", it) }.getOrNull()
+    }
+
+    /**
      * Removes pictures no recipe points at any more.
      *
      * Files touched in the last few minutes are left alone: an import running right

@@ -13,6 +13,7 @@ import nl.potat04.kookboek.data.PageFetcher
 import nl.potat04.kookboek.data.RecipeRepository
 import nl.potat04.kookboek.data.RecipeStore
 import nl.potat04.kookboek.data.SettingsStore
+import nl.potat04.kookboek.data.ShareFiles
 
 class KookboekApp : Application() {
 
@@ -32,7 +33,12 @@ class KookboekApp : Application() {
     override fun onCreate() {
         super.onCreate()
         settings = SettingsStore(this)
-        repository = RecipeRepository(RecipeStore(this, scope), ImageStore(this), PageFetcher(this))
+        repository = RecipeRepository(
+            RecipeStore(this, scope),
+            ImageStore(this),
+            PageFetcher(this),
+            ShareFiles.pages(this),
+        )
         scope.launch {
             repository.load()
             // The bin is a bin and not an archive. Thirty days is long enough to notice

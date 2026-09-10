@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  What the FileProvider is allowed to hand to another app. Both directories are in the
+  cache and hold copies: the recipe file on its way to a friend, and the raw page behind
+  a failed import. The names must match nl.potat04.kookboek.data.ShareFiles.
+-->
+<paths>
+    <cache-path name="share" path="share/" />
+    <cache-path name="pages" path="pages/" />
+</paths>

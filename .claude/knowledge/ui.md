@@ -174,6 +174,16 @@ een doos van nul bij nul, vangt geen tikken weg en is toch op een echt formaat u
 zodat hem zichtbaar maken geen relayout kost. Pas als de controle om een tik vraagt komt hij
 naar voren, met een kop en een regel uitleg erboven. Zie [fetching.md](fetching.md).
 
+## Papier dat echt papier is
+
+`ui/PrintRecipe.kt` bouwt een HTML-pagina en laat een WebView buiten beeld hem afdrukken; de
+systeemdialoog erachter doet ook "opslaan als PDF", dus dat is één weg voor twee dingen.
+
+Die pagina is **zwarte inkt op wit**, en niet het gekozen palet. Een afdruk heeft geen
+donkerstand, en crèmewit papier natekenen betekent een vel volspuiten om niets te zeggen. Serif
+overal, een lijn onder de titel, en op breed papier de ingrediënten naast de bereiding. Het is de
+enige plek in de app waar de paletregels bewust niet gelden.
+
 ## Meerdere recepten tegelijk
 
 Lang drukken op een kaart in de bibliotheek begint een selectie; daarna voegt een gewone tik toe

@@ -40,6 +40,7 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Done
@@ -48,6 +49,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -66,6 +68,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -88,6 +91,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import nl.potat04.kookboek.R
 import nl.potat04.kookboek.data.ParseQuality
 import nl.potat04.kookboek.data.Recipe
@@ -270,6 +274,7 @@ fun RecipeScreen(
             if (recipe.quality == ParseQuality.LINK_ONLY) {
                 item(key = "unread") {
                     CouldNotRead(
+                        recipe = recipe,
                         hasSource = recipe.sourceUrl != null,
                         onOpen = { recipe.sourceUrl?.let { context.openLink(it) } },
                         onRetry = refetch,
@@ -457,6 +462,9 @@ private fun DetailBar(
             Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.action_edit))
         }
         var menu by remember { mutableStateOf(false) }
+        val context = LocalContext.current
+        val images = LocalImageStore.current
+        val scope = rememberCoroutineScope()
         val entries = buildList {
             if (recipe.sourceUrl != null) add(
                 MenuEntry(
@@ -474,6 +482,17 @@ private fun DetailBar(
                 ),
             )
             add(MenuEntry(stringResource(R.string.recipe_made_it), Icons.Default.Done, onClick = onMadeIt))
+            // Three ways out of the app: to whoever you talk to, to another Kookboek,
+            // and onto paper. See ui/Sharing.kt and ui/PrintRecipe.kt.
+            add(MenuEntry(stringResource(R.string.share_as_text), Icons.Default.Share) {
+                context.shareRecipeText(listOf(recipe))
+            })
+            add(MenuEntry(stringResource(R.string.share_as_file), Icons.AutoMirrored.Filled.Send) {
+                // Writing the zip is real work, so it waits for a scope rather than
+                // holding up the menu closing.
+                scope.launch { images?.let { context.shareRecipeFile(listOf(recipe), it) } }
+            })
+            add(MenuEntry(stringResource(R.string.share_print), null) { context.printRecipe(recipe, images) })
             add(MenuEntry(stringResource(R.string.action_delete), Icons.Default.Delete, onClick = onDelete))
         }
         Box {
@@ -786,8 +805,10 @@ private fun NotesField(notes: String, onNotes: (String) -> Unit) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun CouldNotRead(
+    recipe: Recipe,
     hasSource: Boolean,
     onOpen: () -> Unit,
     onRetry: () -> Unit,
@@ -814,7 +835,12 @@ private fun CouldNotRead(
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Spacer(Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            val context = LocalContext.current
+            // The page behind a failed import is kept in the cache, and it is the one
+            // thing that turns "this site does not work" into something that can be fixed.
+            val keptPage = remember(recipe.id) { context.hasKeptPage(recipe) }
+            // Flows: four buttons, one of them a whole sentence, never fit on one line.
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 if (hasSource) {
                     TextButton(onClick = onOpen) {
                         Text(stringResource(R.string.recipe_unread_open))
@@ -825,6 +851,11 @@ private fun CouldNotRead(
                 }
                 TextButton(onClick = onWrite) {
                     Text(stringResource(R.string.recipe_unread_write))
+                }
+                if (keptPage) {
+                    TextButton(onClick = { context.sharePage(recipe) }) {
+                        Text(stringResource(R.string.share_help_site))
+                    }
                 }
             }
         }

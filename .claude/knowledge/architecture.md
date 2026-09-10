@@ -3,15 +3,15 @@
 Eén module, geen DI-framework, geen use-case-laag. De app is klein en mag klein blijven.
 
 ```
-                                                          ┌─> RecipeStore ─> Room
-ShareActivity ─┐                                          │
-               ├─> KookboekViewModel ─> RecipeRepository ─┼─> ImageStore ─> filesDir/images
-MainActivity ──┘                                          │
-       │                                                  └─> PageFetcher ─> Jsoup
-       │                                                          │            of WebView
-       │                                                          v
-       └── ChallengeOverlay <──────────────────────────── ChallengeStage
-       └───────────────────────────────> SettingsStore ─> SharedPreferences
+                                                           ┌─> RecipeStore ─> Room
+ShareActivity ──┐                                          │
+OpenFileActivity├─> KookboekViewModel ─> RecipeRepository ─┼─> ImageStore ─> filesDir/images
+MainActivity ───┘                                          │
+       │                                                   └─> PageFetcher ─> Jsoup
+       │                                                           │            of WebView
+       │                                                           v
+       └── ChallengeOverlay <───────────────────────────── ChallengeStage
+       └────────────────────────────────> SettingsStore ─> SharedPreferences
 ```
 
 ## Wie doet wat
@@ -68,7 +68,16 @@ schuiven terwijl een bestand van twee jaar geleden nog moet openen. Een envelop 
 `version`, `exportedAt` en `recipes`; labels reizen als naam, want ids zijn lokaal. `decode`
 geeft een `Result` terug en nooit een exception: onbekende sleutels worden genegeerd, een hogere
 `version` wordt geweigerd met een `DecodeError.NewerVersion`. Zip en bestands-IO horen hier niet;
-dat doet de backup-laag erboven.
+dat doet de laag erboven.
+
+**`RecipeFile`** (in `data/RecipeFile.kt`) is die laag voor het losse bestand: een zip met
+`recipe.json` (een `RecipeJson.Document`) en `images/<naam>` voor de foto's en de gefotografeerde
+receptkaarten. Elke entry gaat door AES-256-GCM. De sleutel zit in de app, en dat kan niet anders:
+beide telefoons moeten hem kennen en er is geen server om hem uit te delen. Het is dus
+**versluiering, geen geheim** — het houdt andere apps weg, houdt een bestand uit een editor, en
+zorgt dat wat de app terugleest is wat de app geschreven heeft. Zet er niets in wat erg zou zijn
+als het gelezen werd. Geen Android in dit bestand, dus het formaat is gewoon op de JVM te testen
+(`RecipeFileTest`).
 
 **`Backup`** (in `data/Backup.kt`) ís die laag: `RecipeJson` plus de foto's in één zip, en terug.
 Hij praat alleen met de `RecipeRepository`, nooit met de DAO, zodat een restore in dezelfde
@@ -120,6 +129,19 @@ Net als de andere bestemmingen met een id heeft het de `LeaveWhenGone`-wacht: ve
 recept onder je vandaan, dan loopt het scherm weg in plaats van leeg te blijven staan.
 `ShareActivity` is een losse activity met een doorzichtig thema (`Theme.Kookboek.Sheet`), zodat
 het deelvenster over je browser zweeft in plaats van de hele app te openen.
+
+`OpenFileActivity` is de derde ingang, met hetzelfde thema en dezelfde belofte: iemand tikt een
+`.kookboek`-bestand aan in zijn chat-app en krijgt een venstertje dat zegt wat erin zit. Er gaat
+niets naar de database voordat er op "Toevoegen aan kookboek" getikt is; tot dan staan de foto's in
+`cacheDir/incoming`. Hij luistert alleen naar het eigen mimetype (`application/vnd.kookboek`) en
+naar de `application/octet-stream` waar sommige chat-apps op terugvallen. **Geen `text/plain`**: die
+filter hoort bij `ShareActivity` alleen, anders staat Kookboek twee keer in elk deelmenu.
+
+Naar buiten gaat het via `ui/Sharing.kt` (`Recipe.toShareText`, `Context.shareRecipeText`,
+`Context.shareRecipeFile`, `Context.sharePage`) en `ui/PrintRecipe.kt`. Bestanden die een andere
+app mag lezen gaan door een `FileProvider` met authority `<applicationId>.files`; welke mappen dat
+zijn staat in `res/xml/file_paths.xml` en in `data/ShareFiles.kt`, en die twee moeten het eens
+blijven. Alles daarin ligt in de cache: een kopie op weg naar buiten is geen kookboek.
 
 ## Wat er bewust niet is
 
