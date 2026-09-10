@@ -21,6 +21,7 @@ import nl.potat04.kookboek.R
 import nl.potat04.kookboek.data.ImportResult
 import nl.potat04.kookboek.data.Recipe
 import nl.potat04.kookboek.data.RecipeRepository
+import java.util.Locale
 
 enum class SortOrder(@param:StringRes val labelRes: Int) {
     NEWEST(R.string.sort_newest),
@@ -94,9 +95,6 @@ class KookboekViewModel(private val repo: RecipeRepository) : ViewModel() {
     val images get() = repo.images
 
     fun byId(id: String?): Recipe? = repo.byId(id)
-
-    /** A plain word in the snackbar from a screen that has something to report. */
-    fun notify(text: UiText) { toasts.trySend(Toast(text)) }
 
     fun setQuery(value: String) { _query.value = value }
     fun toggleFavouritesFilter() { _favouritesOnly.value = !_favouritesOnly.value }
@@ -247,6 +245,34 @@ class KookboekViewModel(private val repo: RecipeRepository) : ViewModel() {
     /** Pages that gave no title at all still have to be named in a snackbar. */
     private fun Recipe.titleText(): UiText =
         if (title.isBlank()) UiText.Res(R.string.recipe_untitled) else UiText.Raw(title)
+
+    // --- recipe screen
+
+    /** First open only; the repository ignores the call once a date is set. */
+    fun markOpened(recipe: Recipe) = viewModelScope.launch { repo.markOpened(recipe.id) }
+
+    /**
+     * Where the stepper was left. Stored as null when it matches the page's own
+     * number, so a refetch that changes the servings does not leave a stale override.
+     */
+    fun setCookedServings(recipe: Recipe, servings: Int) = viewModelScope.launch {
+        repo.update(recipe.id) { it.copy(cookedServings = servings.takeIf { n -> n != it.servings }) }
+    }
+
+    /** Stamps today and, when a line was left, pencils it into the notes with the date. */
+    fun markCooked(recipe: Recipe, note: String?) = viewModelScope.launch {
+        val now = System.currentTimeMillis()
+        repo.update(recipe.id) {
+            it.copy(
+                lastCookedAt = now,
+                notes = CookedNote.append(it.notes, note, now, Locale.getDefault()),
+            )
+        }
+        toasts.send(Toast(UiText.Res(R.string.recipe_made_toast)))
+    }
+
+    /** A plain snackbar from a screen that has something to say but nothing to undo. */
+    fun notify(message: UiText) = viewModelScope.launch { toasts.send(Toast(message)) }
 
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {

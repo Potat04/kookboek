@@ -213,6 +213,61 @@ De ingrediënten komen als sheet omhoog en laten de stap staan; ligt de telefoon
 ze als kolom links en is er niets om te trekken. Ze zijn omgerekend naar `cookedServings` en de
 vinkjes zijn dezelfde als op het receptscherm. Een stap afvinken blijft een bewuste tik: automatisch
 afvinken bij het doorbladeren zou de stap aankruisen waar je alleen even naar vooruit keek.
+## Het receptscherm
+
+`ui/RecipeScreen.kt` is één `LazyColumn` met sleutels per item (`"bar"`, `"head"`, `"method"`,
+`"step:3"`, `"notes"`). Die sleutels zijn niet alleen voor Compose: het scherm leest eraan af
+waar je bent. Staat het eerste zichtbare item in de bereiding, dan verschijnt rechtsonder een
+klein pilletje "Ingrediënten" dat een `ModalBottomSheet` opent (`ui/IngredientsSheet.kt`) met
+dezelfde omgerekende, afvinkbare lijst. Gesloten staat het nergens voor; scroll je terug naar
+boven, dan is het weg.
+
+De ingrediëntregels zelf staan in `ui/IngredientLines.kt` en worden door het scherm én de sheet
+gebruikt, zodat een groepskop, een vinkje en een omgerekende hoeveelheid op beide plekken
+hetzelfde doen. "Afgevinkte verbergen" op de kop klapt de aangevinkte regels in tot één regel
+"3 klaargezet"; de rest houdt zijn volgorde, en een groep waarvan alles is afgevinkt verliest
+ook zijn kopje. Groepskoppen (`GroupHeading`) zijn voor ingrediënten en stappen dezelfde
+`titleMedium` in `primary`.
+
+Wat het scherm verder onthoudt en doet:
+
+- **De stepper begint waar je hem achterliet.** `cookedServings` is de laatste stand; het getal
+  van de pagina blijft de basis waar vanaf omgerekend wordt, en de regel "omgerekend vanaf 4"
+  blijft staan. Staat de stepper weer op het origineel, dan schrijft de ViewModel `null`, zodat
+  een opnieuw opgehaalde portie-telling niet onder een oude stand blijft zitten.
+- **"Gemaakt"** (in het menu en stil onderaan de bereiding) zet `lastCookedAt` op nu en neemt
+  één regel mee die met de datum onder de notities komt (`ui/CookedNote.kt`, puur en getest).
+  Onder de byline staat dan "Laatst gemaakt op 10 sep. 2026". Geen sterren, geen teller.
+- **Opnieuw ophalen vraagt eerst** als `editedAt` gezet is. Dat is het enige op dit scherm dat
+  de snackbar niet ongedaan kan maken. Zonder eigen aanpassingen gaat het meteen.
+- **Verwijderen vraagt niks meer.** De dialoog is weg, om dezelfde reden als bij de selectie in
+  de bibliotheek; de snackbar is de weg terug.
+- **Tijden in een stap zijn timers.** `DurationText` onderstreept "20 minuten", een tik zet via
+  `Context.startTimer` een timer in de klok-app zonder die te openen. Is er geen klok-app, dan
+  zegt een snackbar dat (`vm.notify(UiText)`), in plaats van niets te doen.
+- **Een tag of de sitenaam is een zoekopdracht.** `onSearch` zet de query in de ViewModel en
+  gaat terug naar de bibliotheek. Alle tags worden getoond, in een `FlowRow`.
+- **Ingrediënten kopiëren** zet de omgerekende lijst met groepskoppen op het klembord, één regel
+  per ingrediënt (`ui/IngredientsText.kt`, puur en getest).
+- **Foto's gaan open op een tik**: `ui/FullScreenPicture.kt` is een `Dialog` over alles heen,
+  knijpen zoomt, slepen schuift, een tik sluit. Een gefotografeerd receptkaartje
+  (`attachmentFile`) staat heel, niet bijgesneden, onder de notities en opent op dezelfde manier.
+- **Voorbereiding en koken apart** waar de pagina beide gaf: "15 min voorbereiden, 40 min koken"
+  (`timeDetailText()` in `Labels.kt`). De kaart in de bibliotheek houdt het totaal; die heeft
+  één regel.
+- **De plus en min van de stepper zijn getekend**, op de hoogte van de cijfers ertussen. Een
+  typografische min is een derde van het getal en leest als een vlekje vanaf het aanrecht.
+- **"Bewaard"** verschijnt even onder de notities nadat de autosave gevuurd heeft, in een vakje
+  met vaste hoogte zodat de pagina niet verspringt.
+- **Tekst in stappen en ingrediënten is te selecteren** (`SelectionContainer`); een korte tik
+  vinkt nog steeds af, want de selectie claimt de aanraking pas als hij lang wordt.
+- **Een vinkje trilt kort** (`HapticFeedbackType.Confirm`) als `Settings.hapticFeedback` aan
+  staat; het scherm krijgt dat als `haptics: Boolean`.
+- **`markOpened`** loopt één keer bij het openen; de repository zet `openedAt` alleen als hij
+  nog leeg is.
+
+Het overloopmenu en de sectiekoppen zijn geordende lijsten (`MenuEntry`, `HeaderAction`), niet
+geneste `if`s: wie er iets aan toevoegt, voegt één regel toe.
 
 ## UX-regels die niet onderhandelbaar zijn
 

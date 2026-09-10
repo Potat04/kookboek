@@ -216,20 +216,6 @@ fun CookScreen(
     }
 }
 
-/** The way into cook mode, sat in the method heading where the steps begin. */
-@Composable
-internal fun CookButton(onClick: () -> Unit) {
-    TextButton(onClick = onClick) {
-        Icon(
-            Icons.Default.PlayArrow,
-            contentDescription = null,
-            modifier = Modifier.size(18.dp),
-        )
-        Spacer(Modifier.width(6.dp))
-        Text(stringResource(R.string.cook_open), style = MaterialTheme.typography.labelLarge)
-    }
-}
-
 @Composable
 private fun CookBar(page: () -> Int, total: Int, onClose: () -> Unit) {
     Row(
