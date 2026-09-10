@@ -78,8 +78,6 @@
     <string name="recipe_servings_fewer">Minder porties</string>
     <string name="recipe_view_original">Bekijk origineel op %s</string>
     <string name="recipe_view_original_generic">de site</string>
-    <string name="recipe_delete_title">Recept verwijderen?</string>
-    <string name="recipe_delete_body">\'%s\' gaat uit je kookboek. Je kunt dit direct daarna ongedaan maken.</string>
     <string name="recipe_unread_title">Het recept zelf kwam er niet uit</string>
     <string name="recipe_unread_body">Deze pagina publiceert geen leesbaar recept — de link is wel bewaard.</string>
     <string name="recipe_unread_open">Open origineel</string>

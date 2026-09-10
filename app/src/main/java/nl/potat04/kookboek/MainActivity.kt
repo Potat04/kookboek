@@ -116,6 +116,7 @@ private fun KookboekNavHost(
     val busy by vm.busy.collectAsStateWithLifecycle()
     val selection by vm.selection.collectAsStateWithLifecycle()
     val loaded by vm.loaded.collectAsStateWithLifecycle()
+    val settings by store.settings.collectAsStateWithLifecycle()
 
     // Recipes created by "write it yourself" only hit disk once you save them.
     var draft by remember { mutableStateOf<Recipe?>(null) }
@@ -188,6 +189,16 @@ private fun KookboekNavHost(
                     // disappearing and walks back — one place decides, so we cannot
                     // pop twice and empty the whole back stack.
                     onDelete = { vm.delete(recipe) },
+                    // A tag or a site name becomes the library's search.
+                    onSearch = { text ->
+                        vm.setQuery(text)
+                        nav.popBackStack("library", inclusive = false)
+                    },
+                    onServings = { vm.setCookedServings(recipe, it) },
+                    onMadeIt = { vm.markCooked(recipe, it) },
+                    onNotify = vm::notify,
+                    onOpened = { vm.markOpened(recipe) },
+                    haptics = settings.hapticFeedback,
                     contentPadding = padding,
                 )
             }
