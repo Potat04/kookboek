@@ -75,6 +75,7 @@ fun SettingsScreen(
     onDeleted: () -> Unit,
     onBack: () -> Unit,
     contentPadding: PaddingValues,
+    updateContent: @Composable () -> Unit = {},
 ) {
     val context = LocalContext.current
     val language = context.appLanguage()
@@ -167,6 +168,8 @@ fun SettingsScreen(
         )
 
         Spacer(Modifier.height(30.dp))
+        updateContent()
+        Spacer(Modifier.height(16.dp))
         Text(
             stringResource(R.string.settings_version, appVersion(context)),
             style = MaterialTheme.typography.labelSmall,

@@ -7,4 +7,5 @@
 <paths>
     <cache-path name="share" path="share/" />
     <cache-path name="pages" path="pages/" />
+    <cache-path name="updates" path="updates/" />
 </paths>

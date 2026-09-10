@@ -14,6 +14,7 @@ import nl.potat04.kookboek.data.RecipeRepository
 import nl.potat04.kookboek.data.RecipeStore
 import nl.potat04.kookboek.data.SettingsStore
 import nl.potat04.kookboek.data.ShareFiles
+import nl.potat04.kookboek.data.UpdateManager
 
 class KookboekApp : Application() {
 
@@ -29,6 +30,8 @@ class KookboekApp : Application() {
      */
     lateinit var settings: SettingsStore
         private set
+
+    val updates by lazy { UpdateManager(this, scope) }
 
     override fun onCreate() {
         super.onCreate()

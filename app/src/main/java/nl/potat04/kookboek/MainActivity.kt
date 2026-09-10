@@ -42,6 +42,8 @@ import nl.potat04.kookboek.ui.ChallengeOverlay
 import nl.potat04.kookboek.ui.ProvideImageStore
 import nl.potat04.kookboek.ui.RecipeScreen
 import nl.potat04.kookboek.ui.SettingsScreen
+import nl.potat04.kookboek.ui.UpdateHost
+import nl.potat04.kookboek.ui.UpdateSettings
 import nl.potat04.kookboek.ui.resolve
 import nl.potat04.kookboek.ui.setAppLanguage
 import nl.potat04.kookboek.ui.theme.KookboekTheme
@@ -94,15 +96,19 @@ private fun Kookboek(vm: KookboekViewModel, store: SettingsStore, openRecipe: St
         }
     }
 
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbars) },
-        containerColor = Color.Transparent,
-        contentColor = MaterialTheme.colorScheme.onBackground,
-        // Keep scrolling content and controls outside the system navigation buttons.
-        // This consumes the inset so Scaffold does not add the same spacing again.
-        modifier = Modifier.fillMaxSize().navigationBarsPadding(),
-    ) { padding ->
-        KookboekNavHost(nav, vm, store, padding)
+    UpdateHost((context.applicationContext as KookboekApp).updates) { updateState, openUpdates ->
+        Scaffold(
+            snackbarHost = { SnackbarHost(snackbars) },
+            containerColor = Color.Transparent,
+            contentColor = MaterialTheme.colorScheme.onBackground,
+            // Keep scrolling content and controls outside the system navigation buttons.
+            // This consumes the inset so Scaffold does not add the same spacing again.
+            modifier = Modifier.fillMaxSize().navigationBarsPadding(),
+        ) { padding ->
+            KookboekNavHost(nav, vm, store, padding) {
+                UpdateSettings(updateState, openUpdates)
+            }
+        }
     }
 }
 
@@ -112,6 +118,7 @@ private fun KookboekNavHost(
     vm: KookboekViewModel,
     store: SettingsStore,
     padding: PaddingValues,
+    updateContent: @Composable () -> Unit,
 ) {
     val all by vm.all.collectAsStateWithLifecycle()
     val visible by vm.visible.collectAsStateWithLifecycle()
@@ -255,6 +262,7 @@ private fun KookboekNavHost(
                 onExport = { vm.exportTo(context.contentResolver, it) },
                 onRestore = { vm.restoreFrom(context.contentResolver, it) },
                 onDeleted = { nav.navigate("deleted") },
+                updateContent = updateContent,
                 onBack = { nav.popBackStack() },
                 contentPadding = padding,
             )

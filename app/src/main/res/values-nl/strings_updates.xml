@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="updates_title">App-updates</string>
+    <string name="updates_daily_note">Kookboek controleert bij het openen op nieuwe versies op GitHub, maximaal één keer per dag.</string>
+    <string name="updates_check">Controleren op updates</string>
+    <string name="updates_view">Update bekijken</string>
+    <string name="updates_checking">Controleren op updates…</string>
+    <string name="updates_current">Je hebt de nieuwste versie.</string>
+    <string name="updates_available">Versie %1$s is beschikbaar.</string>
+    <string name="updates_downloading">Versie %1$s downloaden…</string>
+    <string name="updates_ready">Versie %1$s is klaar om te installeren.</string>
+    <string name="updates_download">Update downloaden</string>
+    <string name="updates_cancel_download">Download annuleren</string>
+    <string name="updates_close">Sluiten</string>
+    <string name="updates_install">Update installeren</string>
+    <string name="updates_allow_install">Installatie toestaan</string>
+    <string name="updates_permission_note">Geef Kookboek in de Android-instellingen toestemming om apps te installeren. Keer hier terug en tik op Update installeren.</string>
+    <string name="updates_install_note">Android vraagt je de installatie te bevestigen. Je recepten en instellingen blijven bewaard.</string>
+    <string name="updates_error_check">Controleren op updates is niet gelukt. Controleer je verbinding en probeer het later opnieuw.</string>
+    <string name="updates_error_download">Downloaden is niet gelukt. Controleer je verbinding en vrije opslagruimte en probeer het opnieuw.</string>
+    <string name="updates_error_invalid">Dit bestand is geen geldige nieuwere Kookboek-update. Controleer opnieuw op updates.</string>
+    <string name="updates_error_signature">Deze update heeft een andere ondertekening dan de geïnstalleerde app en kan deze niet vervangen.</string>
+    <string name="updates_error_install">Android kon het installatievenster of de installatie-instellingen niet openen. Probeer het opnieuw.</string>
+</resources>
