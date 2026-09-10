@@ -2,6 +2,7 @@ package nl.potat04.kookboek.data
 
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
@@ -37,6 +38,8 @@ enum class UpdateError { CHECK, DOWNLOAD, INVALID_APK, SIGNATURE, INSTALL }
 /** Owns downloads across screens. Only the UI may launch permission or installer activities. */
 class UpdateManager(context: Context, private val scope: CoroutineScope) {
     private val app = context.applicationContext
+    // GitHub APKs belong to the live app; debug has its own package and signing key.
+    val enabled = app.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE == 0
     private val prefs = app.getSharedPreferences("updates", Context.MODE_PRIVATE)
     private val mutableState = MutableStateFlow<UpdateState>(UpdateState.Idle)
     val state = mutableState.asStateFlow()
@@ -46,6 +49,7 @@ class UpdateManager(context: Context, private val scope: CoroutineScope) {
 
     @MainThread
     fun check(manual: Boolean = false) {
+        if (!enabled) return
         if (job?.isCompleted == false || state.value is UpdateState.Ready) return
         val now = System.currentTimeMillis()
         val due = checkDue(now, prefs.getLong("checkedAt", 0))

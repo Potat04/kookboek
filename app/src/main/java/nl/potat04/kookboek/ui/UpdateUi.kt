@@ -46,6 +46,10 @@ fun UpdateHost(
     updates: UpdateManager,
     content: @Composable (UpdateState, () -> Unit) -> Unit,
 ) {
+    if (!updates.enabled) {
+        content(UpdateState.Idle) { }
+        return
+    }
     val state by updates.state.collectAsStateWithLifecycle()
     var open by rememberSaveable { mutableStateOf(false) }
     var promptedVersion by rememberSaveable { mutableStateOf<String?>(null) }

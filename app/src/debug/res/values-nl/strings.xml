@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Kookboek Debug</string>
+    <string name="share_label">Bewaar in Kookboek Debug</string>
+    <string name="share_open_label">Openen in Kookboek Debug</string>
+</resources>

@@ -96,7 +96,8 @@ private fun Kookboek(vm: KookboekViewModel, store: SettingsStore, openRecipe: St
         }
     }
 
-    UpdateHost((context.applicationContext as KookboekApp).updates) { updateState, openUpdates ->
+    val updates = (context.applicationContext as KookboekApp).updates
+    UpdateHost(updates) { updateState, openUpdates ->
         Scaffold(
             snackbarHost = { SnackbarHost(snackbars) },
             containerColor = Color.Transparent,
@@ -106,7 +107,7 @@ private fun Kookboek(vm: KookboekViewModel, store: SettingsStore, openRecipe: St
             modifier = Modifier.fillMaxSize().navigationBarsPadding(),
         ) { padding ->
             KookboekNavHost(nav, vm, store, padding) {
-                UpdateSettings(updateState, openUpdates)
+                if (updates.enabled) UpdateSettings(updateState, openUpdates)
             }
         }
     }
