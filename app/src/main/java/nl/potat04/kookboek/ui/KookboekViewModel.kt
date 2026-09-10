@@ -8,6 +8,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -69,6 +70,9 @@ class KookboekViewModel(private val repo: RecipeRepository) : ViewModel() {
      */
     private val _selection = MutableStateFlow<Set<String>>(emptySet())
     val selection: StateFlow<Set<String>> = _selection.asStateFlow()
+
+    /** The import running right now, so the reader can call it off. */
+    private var importJob: Job? = null
 
     private val toasts = Channel<Toast>(Channel.BUFFERED)
     val messages = toasts.receiveAsFlow()
@@ -264,24 +268,37 @@ class KookboekViewModel(private val repo: RecipeRepository) : ViewModel() {
     }
 
     /** Used by the "paste a link" action inside the app. */
-    fun importUrl(url: String, onDone: (String?) -> Unit = {}) = viewModelScope.launch {
-        _busy.value = true
-        val result = repo.import(url)
-        _busy.value = false
-        when (result) {
-            is ImportResult.Saved -> {
-                toasts.send(Toast(describe(result.recipe)))
-                onDone(result.recipe.id)
-            }
-            is ImportResult.AlreadySaved -> {
-                toasts.send(Toast(UiText.Res(R.string.toast_already_saved)))
-                onDone(result.recipe.id)
-            }
-            is ImportResult.Failed -> {
-                toasts.send(Toast(result.reason.text()))
-                onDone(null)
+    fun importUrl(url: String, onDone: (String?) -> Unit = {}) {
+        importJob?.cancel()
+        importJob = viewModelScope.launch {
+            _busy.value = true
+            try {
+                when (val result = repo.import(url)) {
+                    is ImportResult.Saved -> {
+                        toasts.send(Toast(result.note?.text() ?: describe(result.recipe)))
+                        onDone(result.recipe.id)
+                    }
+                    is ImportResult.AlreadySaved -> {
+                        toasts.send(Toast(UiText.Res(R.string.toast_already_saved)))
+                        onDone(result.recipe.id)
+                    }
+                    is ImportResult.Failed -> {
+                        toasts.send(Toast(result.reason.text()))
+                        onDone(null)
+                    }
+                }
+            } finally {
+                // Also on the way out through a cancellation, or the library would sit
+                // there spinning over an import nobody is doing any more.
+                _busy.value = false
             }
         }
+    }
+
+    /** Drops a running import. Nothing is saved and nothing is said about it. */
+    fun cancelImport() {
+        importJob?.cancel()
+        importJob = null
     }
 
     fun refresh(recipe: Recipe) = viewModelScope.launch {

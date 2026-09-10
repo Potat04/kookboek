@@ -24,9 +24,13 @@ De testklassen, allemaal zonder Android-runtime:
 ## Fixtures
 
 `app/src/test/resources/fixtures/` bevat opgeslagen pagina's van leukerecepten.nl, cheffatty.com,
-24kitchen.nl, bbcgoodfood.com en één pagina die helemaal geen receptdata prijsgeeft (ah.nl, die
-een botblokkade teruggeeft). De test controleert dat de app daar alsnog netjes iets
-bruikbaars van maakt.
+24kitchen.nl, bbcgoodfood.com, uitpaulineskeuken.nl, laurasbakery.nl en cookieandkate.com, en
+één pagina die helemaal geen receptdata prijsgeeft (ah.nl, die een botblokkade teruggeeft). De
+test controleert dat de app daar alsnog netjes iets bruikbaars van maakt.
+
+De laatste twee staan er om de ingrediëntgroepen: laurasbakery.nl is WP Recipe Maker met
+"Voor het deeg" en "Voor de vulling", cookieandkate.com is Tasty Recipes. Zie
+[parser.md](parser.md).
 
 Daarnaast staan er twee controlepagina's: `challenge-redirect.html`, een JavaScript-redirect
 zonder Cloudflare-header, en `challenge-turnstile.html`. Ze zijn met een kale curl opgehaald

@@ -131,7 +131,7 @@
     <string name="toast_partial">Partly read — worth a look</string>
 
     <string name="error_no_valid_link">No valid link found</string>
-    <string name="error_fetch_failed">Could not fetch the page</string>
+    <string name="error_fetch_failed">Could not fetch the page. Check the link, or try again in a moment.</string>
     <string name="error_blocked">This site blocked the app. Open the page in your browser first, then share it again.</string>
     <string name="challenge_title">This site is checking your browser</string>
     <string name="challenge_body">Finish the check below and the recipe will be read straight after.</string>

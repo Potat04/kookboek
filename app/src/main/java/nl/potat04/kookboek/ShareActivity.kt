@@ -11,6 +11,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import nl.potat04.kookboek.data.FailureReason
 import nl.potat04.kookboek.data.ImportResult
@@ -44,13 +45,19 @@ class ShareActivity : ComponentActivity() {
             // background or touch the system bars — only its own card is ours.
             KookboekTheme(settings = settings, applySystemBars = false) {
                 var state by remember { mutableStateOf<ShareState>(ShareState.Working) }
+                // Held so the reader can call it off. The import runs on the application
+                // scope, so closing the sheet does not stop it; cancelling is meant to.
+                var running by remember { mutableStateOf<Deferred<ImportResult>?>(null) }
 
                 LaunchedEffect(url) {
                     state = if (url == null) {
                         ShareState.Failed(FailureReason.NOTHING_SHARED)
                     } else {
-                        when (val result = app.scope.async { app.repository.import(url) }.await()) {
-                            is ImportResult.Saved -> ShareState.Done(result.recipe, isNew = true)
+                        val job = app.scope.async { app.repository.import(url) }
+                        running = job
+                        when (val result = job.await()) {
+                            is ImportResult.Saved ->
+                                ShareState.Done(result.recipe, isNew = true, note = result.note)
                             is ImportResult.AlreadySaved -> ShareState.Done(result.recipe, isNew = false)
                             is ImportResult.Failed -> ShareState.Failed(result.reason)
                         }
@@ -61,6 +68,9 @@ class ShareActivity : ComponentActivity() {
                     ShareSheet(
                         state = state,
                         onClose = ::finish,
+                        // Nothing is saved and nothing is said: the reader knows what
+                        // they just did, and the page is still open behind the sheet.
+                        onCancel = { running?.cancel(); finish() },
                         onOpen = ::openInApp,
                     )
                     // Over the sheet, because a bot check that needs you needs the screen.

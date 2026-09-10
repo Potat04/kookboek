@@ -107,12 +107,20 @@ val TextSize.labelRes: Int
         TextSize.HUGE -> R.string.settings_text_huge
     }
 
-/** Why an import came back empty-handed, said out loud. */
+/**
+ * Why an import came back empty-handed, said out loud.
+ *
+ * Every one of these names what to do next, because "could not fetch the page" leaves
+ * the reader guessing whether to wait, retry, or go and open the page themselves.
+ */
 fun FailureReason.text(): UiText = UiText.Res(
     when (this) {
         FailureReason.NO_VALID_LINK -> R.string.error_no_valid_link
+        FailureReason.OFFLINE -> R.string.edit_error_offline
         FailureReason.FETCH_FAILED -> R.string.error_fetch_failed
         FailureReason.BLOCKED -> R.string.error_blocked
+        FailureReason.TIMED_OUT -> R.string.edit_error_timed_out
+        FailureReason.NO_RECIPE_ON_PAGE -> R.string.edit_error_no_recipe
         FailureReason.NO_SOURCE_URL -> R.string.error_no_source_url
         FailureReason.NOTHING_SHARED -> R.string.error_nothing_shared
     }

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Het bewerkscherm: foto's, de receptkaart, kopjes -->
+    <string name="edit_photo_label">Foto</string>
+    <string name="edit_photo_choose">Foto kiezen</string>
+    <string name="edit_photo_replace">Andere kiezen</string>
+    <string name="edit_photo_remove">Weghalen</string>
+    <string name="edit_photo_failed">Die foto lukte niet</string>
+    <string name="edit_card_label">Foto van de receptkaart</string>
+    <string name="edit_card_choose">Foto toevoegen</string>
+    <string name="edit_add_heading">Kopje toevoegen</string>
+
+    <!-- Alleen te zien als opslaan de vinkjes echt weggooit -->
+    <string name="edit_ticks_title">De vinkjes gaan eraf</string>
+    <string name="edit_ticks_body">Je hebt de lijsten veranderd, en een vinkje hangt aan de plek in die lijst. Sla je op, dan staan de ingrediënten en stappen weer onafgevinkt.</string>
+
+    <!-- Waarom er minder dan een recept binnenkwam -->
+    <string name="edit_error_offline">Je telefoon heeft geen verbinding. Verbind weer en deel de pagina opnieuw.</string>
+    <string name="edit_error_timed_out">De site bleef controleren tot de tijd op was. Probeer het nog eens, of open de pagina eerst in je browser.</string>
+    <string name="edit_error_no_recipe">Op die pagina staat geen recept — alleen de link is bewaard. Zoek de pagina waar het recept zelf op staat.</string>
+</resources>

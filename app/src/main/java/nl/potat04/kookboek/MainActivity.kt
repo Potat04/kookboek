@@ -156,9 +156,17 @@ private fun KookboekNavHost(
                 AddRecipeSheet(
                     busy = busy,
                     onDismiss = { addOpen = false },
+                    // The sheet stays up while the page is being fetched, because that
+                    // is where the Cancel button lives.
                     onImport = { url ->
+                        vm.importUrl(url) { id ->
+                            addOpen = false
+                            id?.let { nav.navigate("recipe/$it") }
+                        }
+                    },
+                    onCancel = {
+                        vm.cancelImport()
                         addOpen = false
-                        vm.importUrl(url) { id -> id?.let { nav.navigate("recipe/$it") } }
                     },
                     onWriteOwn = {
                         addOpen = false

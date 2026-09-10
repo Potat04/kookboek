@@ -39,6 +39,40 @@ echt aangetroffen en wordt afgevangen:
 - Nummering die de site zelf al in de stap heeft gezet (`"1. Snijd de ui"`) gaat eruit,
   want de app nummert zelf.
 
+## Groepen in de ingrediëntenlijst
+
+`ParsedRecipe.ingredients` is een `List<Ingredient>`: de regel plus het kopje waar hij onder
+stond ("Voor het deeg"). Drie bronnen, in deze volgorde:
+
+1. **JSON-LD dat zijn groepen bewaart.** `ingredientGroups` (of `recipeIngredientGroups`) met
+   een `name` en de regels eronder. `flattenIngredients()` doet daarvoor hetzelfde als
+   `flattenInstructions()` voor de stappen, inclusief het weggooien van een kopje dat over de
+   hele lijst staat, want dat zegt niets.
+2. **De receptplugin op de pagina.** WP Recipe Maker zet elke groep in een eigen
+   `.wprm-recipe-ingredient-group` met een `h4` erboven; Tasty Recipes schrijft één
+   `.tasty-recipes-ingredients-body` met een `h4` vóór elke `ul`.
+3. **Allebei tegelijk**, en dat is het normale geval: de plugin gooit de kopjes weg op weg naar
+   zijn eigen JSON-LD. `withGroupsFrom()` legt de kopjes van de kaart over een platte lijst heen,
+   maar alléén als de plugin exact evenveel regels in dezelfde volgorde opsomt. Andere aantallen
+   betekent dat de twee niet over dezelfde lijst gaan, en dan gebeurt er niets.
+
+Vandaar dat `lineTexts()` naast `itemTexts()` staat: die laatste gooit dubbele regels weg, en een
+recept dat twee keer vanillesuiker vraagt, één keer per groep, zou daarna elk kopje erna op de
+verkeerde regel zetten.
+
+Fixtures: `laurasbakery.html` (WPRM, Nederlands) en `cookieandkate.html` (Tasty, Engels).
+
+## Tijden en de video
+
+`prepTime` en `cookTime` komen apart binnen in `prepMinutes` en `cookMinutes`. `totalMinutes`
+blijft wat het was: `totalTime` als de site die geeft, anders de som van de twee. Dat is de tijd
+die het scherm toont; de twee delen staan ernaast voor wie wil weten waar ze heen gaan.
+
+`video.contentUrl` wint van `embedUrl` (het bestand boven de speler). Er zit één controle op:
+begint niet met `http`, of staan er spaties of aanhalingstekens in, dan wordt het niets.
+cookieandkate.com publiceert een `contentUrl` met typografische quotes eromheen gebakken, en een
+link die niet opengaat is erger dan geen link.
+
 ## Het vangnet op klasnamen
 
 Vindt de parser geen plugin-markup, dan zoekt `looseList()` een container die zichzelf naar
