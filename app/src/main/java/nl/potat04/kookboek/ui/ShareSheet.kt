@@ -32,7 +32,12 @@ import nl.potat04.kookboek.data.Recipe
 
 sealed interface ShareState {
     data object Working : ShareState
-    data class Done(val recipe: Recipe, val isNew: Boolean) : ShareState
+    /** [note] says why a recipe came through as thin as it did, when there is a reason. */
+    data class Done(
+        val recipe: Recipe,
+        val isNew: Boolean,
+        val note: FailureReason? = null,
+    ) : ShareState
     data class Failed(val reason: FailureReason) : ShareState
 }
 
@@ -44,6 +49,7 @@ sealed interface ShareState {
 fun ShareSheet(
     state: ShareState,
     onClose: () -> Unit,
+    onCancel: () -> Unit,
     onOpen: (String) -> Unit,
 ) {
     Box(
@@ -63,7 +69,7 @@ fun ShareSheet(
         ) {
             Column(Modifier.padding(22.dp)) {
                 when (state) {
-                    ShareState.Working -> Working()
+                    ShareState.Working -> Working(onCancel)
                     is ShareState.Failed -> Failed(state.reason, onClose)
                     is ShareState.Done -> Done(state, onClose, onOpen)
                 }
@@ -73,24 +79,31 @@ fun ShareSheet(
 }
 
 @Composable
-private fun Working() {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        CircularProgressIndicator(
-            strokeWidth = 2.dp,
-            modifier = Modifier.size(20.dp),
-            color = MaterialTheme.colorScheme.primary,
-        )
-        Spacer(Modifier.width(16.dp))
-        Column {
-            Text(
-                stringResource(R.string.share_working_title),
-                style = MaterialTheme.typography.titleLarge,
+private fun Working(onCancel: () -> Unit) {
+    Column {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            CircularProgressIndicator(
+                strokeWidth = 2.dp,
+                modifier = Modifier.size(20.dp),
+                color = MaterialTheme.colorScheme.primary,
             )
-            Text(
-                stringResource(R.string.share_working_body),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Spacer(Modifier.width(16.dp))
+            Column {
+                Text(
+                    stringResource(R.string.share_working_title),
+                    style = MaterialTheme.typography.titleLarge,
+                )
+                Text(
+                    stringResource(R.string.share_working_body),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        // A check behind the sheet can take the better part of a minute. Waiting it out
+        // should be a choice, not the only way back to the page you were reading.
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            TextButton(onClick = onCancel) { Text(stringResource(R.string.action_cancel)) }
         }
     }
 }
@@ -162,6 +175,16 @@ private fun Done(state: ShareState.Done, onClose: () -> Unit, onOpen: (String) -
                     else MaterialTheme.colorScheme.error,
                 )
             }
+        }
+
+        // Saved, and thin for a reason the reader is entitled to hear.
+        state.note?.let { note ->
+            Spacer(Modifier.height(10.dp))
+            Text(
+                note.text().resolve(),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
 
         Spacer(Modifier.height(18.dp))
