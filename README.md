@@ -70,6 +70,9 @@ Alles valt onder Android-backup, dus het verhuist mee naar een nieuw toestel.
 
 ## Bouwen en testen
 
+Een nieuwe versie publiceren: zie [Releases maken](docs/releases.md) voor de stappen
+en het herbruikbare sjabloon voor release notes.
+
 ```bash
 ./gradlew :app:assembleDebug
 ```

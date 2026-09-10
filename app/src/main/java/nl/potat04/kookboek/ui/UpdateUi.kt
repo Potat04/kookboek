@@ -97,7 +97,7 @@ fun UpdateHost(
                 ) {
                     Text(updateStatus(state))
                     if (release != null && release.notes.isNotBlank()) {
-                        Text(release.notes, style = MaterialTheme.typography.bodyMedium)
+                        ReleaseNotes(release.notes)
                     }
                     when (val current = state) {
                         UpdateState.Checking -> LinearProgressIndicator(Modifier.fillMaxWidth())

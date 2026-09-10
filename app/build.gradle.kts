@@ -29,8 +29,8 @@ android {
         applicationId = "nl.potat04.kookboek"
         minSdk = 33
         targetSdk = 36
-        versionCode = 3
-        versionName = "1.0.2"
+        versionCode = 4
+        versionName = "1.0.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -117,6 +117,11 @@ dependencies {
     implementation(libs.androidx.webkit)
     implementation(libs.jsoup)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.markwon.core)
+    implementation(libs.markwon.tables)
+    implementation(libs.markwon.strikethrough)
+    implementation(libs.markwon.tasklist)
+    implementation(libs.markwon.linkify)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
