@@ -1,5 +1,6 @@
 package nl.potat04.kookboek.ui
 
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -24,6 +25,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -37,6 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
@@ -49,6 +53,7 @@ import nl.potat04.kookboek.data.Settings
 import nl.potat04.kookboek.data.TextSize
 import nl.potat04.kookboek.data.ThemeMode
 import nl.potat04.kookboek.ui.theme.Palettes
+import nl.potat04.kookboek.ui.theme.controlOutline
 import nl.potat04.kookboek.ui.theme.paletteFor
 
 /**
@@ -62,6 +67,12 @@ fun SettingsScreen(
     onMode: (ThemeMode) -> Unit,
     onTextSize: (TextSize) -> Unit,
     onLanguage: (AppLanguage) -> Unit,
+    onHaptics: (Boolean) -> Unit,
+    onAutoBackup: (Boolean) -> Unit,
+    onBackupFolder: (String?) -> Unit,
+    onExport: (Uri) -> Unit,
+    onRestore: (Uri) -> Unit,
+    onDeleted: () -> Unit,
     onBack: () -> Unit,
     contentPadding: PaddingValues,
 ) {
@@ -121,6 +132,15 @@ fun SettingsScreen(
         TypeSample()
         Spacer(Modifier.height(26.dp))
 
+        Section(R.string.backup_feel)
+        SwitchRow(
+            title = stringResource(R.string.backup_haptics),
+            body = stringResource(R.string.backup_haptics_body),
+            checked = settings.hapticFeedback,
+            onChange = onHaptics,
+        )
+        Spacer(Modifier.height(26.dp))
+
         Section(R.string.settings_language)
         ChoiceRow(
             options = AppLanguage.entries,
@@ -133,6 +153,17 @@ fun SettingsScreen(
             stringResource(R.string.settings_language_note),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        Spacer(Modifier.height(30.dp))
+        Section(R.string.backup_section)
+        BackupSection(
+            settings = settings,
+            onAutoBackup = onAutoBackup,
+            onBackupFolder = onBackupFolder,
+            onExport = onExport,
+            onRestore = onRestore,
+            onDeleted = onDeleted,
         )
 
         Spacer(Modifier.height(30.dp))
@@ -278,6 +309,10 @@ private fun <T> ChoiceRow(
  * The three sizes that actually carry the app: a step, a summary line and a caption.
  * Picking a text size blind is guesswork, and the summary line is exactly the one
  * people squint at.
+ *
+ * The tick box and the step badge are in here too, drawn the way the recipe screen
+ * draws them. Both are sized off the type scale, so the thing you are choosing is not
+ * only how big the words are but how big the targets under your finger become.
  */
 @Composable
 private fun TypeSample() {
@@ -304,10 +339,9 @@ private fun TypeSample() {
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Spacer(Modifier.height(8.dp))
-            Text(
-                stringResource(R.string.settings_sample_step),
-                style = MaterialTheme.typography.bodyLarge,
-            )
+            SampleIngredient()
+            Spacer(Modifier.height(4.dp))
+            SampleStep()
             Spacer(Modifier.height(8.dp))
             // Built from the same resources a real card uses, so the sample cannot
             // drift away from what it is a sample of. No site name: a real domain in
@@ -322,6 +356,49 @@ private fun TypeSample() {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+    }
+}
+
+/** An ingredient line as the recipe screen sets it, tick box and all. Not tickable here. */
+@Composable
+private fun SampleIngredient() {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Checkbox(
+            checked = false,
+            onCheckedChange = null,
+            colors = CheckboxDefaults.colors(
+                uncheckedColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            ),
+        )
+        Text(
+            stringResource(R.string.backup_sample_ingredient),
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.padding(start = 14.dp),
+        )
+    }
+}
+
+/** A step with its number, the badge sized off the type scale exactly as it is in a recipe. */
+@Composable
+private fun SampleStep() {
+    Row {
+        val badge = with(LocalDensity.current) {
+            (MaterialTheme.typography.titleMedium.fontSize.toDp() * 1.75f).coerceAtLeast(28.dp)
+        }
+        Box(
+            Modifier
+                .size(badge)
+                .border(1.dp, MaterialTheme.colorScheme.controlOutline, CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text("1", style = MaterialTheme.typography.titleMedium)
+        }
+        Spacer(Modifier.width(14.dp))
+        Text(
+            stringResource(R.string.settings_sample_step),
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.padding(top = 2.dp),
+        )
     }
 }
 

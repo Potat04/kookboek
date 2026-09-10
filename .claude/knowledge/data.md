@@ -95,5 +95,57 @@ fotodownload. Er is geen eigen administratie en niets ervan raakt de database. Z
 
 `allowBackup="true"` staat aan, dus database en foto's verhuizen mee naar een nieuw toestel.
 
-Daarnaast is er een eigen bestandsformaat, `data/RecipeJson.kt`, voor backups naar een map en
-voor losse `.kookboek`-bestanden. Zie [architecture.md](architecture.md).
+Daarnaast schrijft de app zijn eigen bestand. `data/Backup.kt` maakt één zip:
+
+| In de zip | Wat het is |
+|---|---|
+| `recipes.json` | `RecipeJson.encode` van alle **levende** recepten; labels reizen als naam |
+| `images/<bestandsnaam>` | elke `imageFile` en `attachmentFile` waar zo'n recept naar wijst |
+
+De prullenbak gaat er niet in. Een back-up is het kookboek, niet de bak ernaast.
+
+**Terugzetten (`Backup.read`) voegt samen, het overschrijft niet.** Per recept uit het bestand:
+
+- onbekende id → toevoegen;
+- bekende id → alleen vervangen als de kopie in het bestand een latere stempel heeft.
+  De stempel is `max(editedAt, addedAt)`. Bij vervangen blijven de vinkjes en `openedAt`
+  van dit toestel staan; het bestand heeft daar geen mening over;
+- id staat hier in de prullenbak → overgeslagen. Terugzetten is niet hetzelfde als een
+  verwijdering ongedaan maken, en dat is precies de verrassing die een restore niet mag geven;
+- labels worden op naam gematcht (hoofdletterongevoelig) en aangemaakt als ze ontbreken.
+
+Foto's worden gekopieerd via `ImageStore.importFile(name, input)`, die een bestand dat er al staat
+met rust laat: de naam ís de recept-id, dus dezelfde naam is dezelfde foto. Een naam met een pad
+erin wordt geweigerd (`Backup.imageName`), want een zip van buiten hoort nergens te kunnen
+schrijven behalve in de images-map.
+
+Een hogere `version` in `recipes.json` wordt geweigerd met `BackupError.NewerVersion`; alles wat
+verder mis kan zijn is `BackupError.NotABackup`. Geen zin, een type, zoals overal.
+
+`Backup.read` geeft een `BackupSummary` terug (toegevoegd, bijgewerkt, overgeslagen, foto's), zodat
+de snackbar kan zeggen wat er gebeurd is in plaats van "klaar".
+
+## Elke dag een back-up
+
+`data/AutoBackup.kt` schrijft `kookboek-JJJJ-MM-DD.zip` naar de map die de lezer met de
+systeem-mappenkiezer aanwees (`settings.backupFolder`, een SAF-tree-uri met blijvende rechten).
+Die kiezer biedt Google Drive, Nextcloud en een USB-stick al aan, dus er is geen SDK en geen
+accountcode; `data/BackupFolder.kt` is het enige stukje dat SAF spreekt, rechtstreeks via
+`DocumentsContract`.
+
+Na elke geslaagde run blijven de **zeven nieuwste** bestanden staan die op onze naam lijken
+(`Backup.stale`, sorteren op naam ís sorteren op datum). Wat er verder in de map staat wordt nooit
+aangeraakt. Bestaat het bestand van vandaag al, dan gaat het eerst weg en wordt het opnieuw
+gemaakt: providers overschrijven niet, die maken er "(1)" van, en een week daarvan is geen week
+back-ups.
+
+Is het recht op de map weg, dan gaat de schakelaar uit en zegt de rij in de instellingen dat.
+Nooit beweren dat er een back-up loopt als dat niet zo is.
+
+## De prullenbak loopt na dertig dagen leeg
+
+`KookboekApp.onCreate` roept na `repository.load()` `purgeDeleted(30 dagen)` aan. Wat langer dan
+dat verwijderd is gaat echt weg, met zijn regels en (bij de volgende `pruneOrphans`) zijn foto.
+Het scherm ernaartoe is `ui/DeletedScreen.kt`, route `deleted`, met terugzetten en één keer
+definitief verwijderen — de enige actie in de app die vooraf vraagt, want dit ís de undo die
+opraakt.
