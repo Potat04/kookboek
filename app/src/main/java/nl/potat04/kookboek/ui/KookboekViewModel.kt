@@ -1,5 +1,7 @@
 package nl.potat04.kookboek.ui
 
+import android.content.ContentResolver
+import android.net.Uri
 import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -18,6 +20,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import nl.potat04.kookboek.KookboekApp
 import nl.potat04.kookboek.R
+import nl.potat04.kookboek.data.Backup
+import nl.potat04.kookboek.data.BackupError
 import nl.potat04.kookboek.data.ImportResult
 import nl.potat04.kookboek.data.Recipe
 import nl.potat04.kookboek.data.RecipeRepository
@@ -71,8 +75,14 @@ class KookboekViewModel(private val repo: RecipeRepository) : ViewModel() {
 
     val all: StateFlow<List<Recipe>> = repo.recipes
 
+    /** Deleted and still recoverable, newest first. Emptied thirty days after the delete. */
+    val deleted: StateFlow<List<Recipe>> = repo.deleted
+
     /** True once the cookbook has been read off disk. */
     val loaded: StateFlow<Boolean> = repo.loaded
+
+    /** Stateless, so it is built here rather than threaded through the constructor. */
+    private val backup = Backup(repo)
 
     val visible: StateFlow<List<Recipe>> =
         combine(repo.recipes, _query, _favouritesOnly, _sort) { recipes, query, favourites, sort ->
@@ -150,7 +160,10 @@ class KookboekViewModel(private val repo: RecipeRepository) : ViewModel() {
                     UiText.Quantity(R.plurals.toast_deleted_many, chosen.size)
                 },
                 actionLabel = UiText.Res(R.string.action_undo),
-                undo = { viewModelScope.launch { chosen.forEach { repo.restore(it) } } },
+                // Clearing deletedAt rather than writing the copies back: the delete
+                // is soft now, so the rows never left, and one update per recipe
+                // cannot lose anything a rewrite might.
+                undo = { viewModelScope.launch { chosen.forEach { repo.restoreDeleted(it.id) } } },
             )
         )
     }
@@ -190,7 +203,62 @@ class KookboekViewModel(private val repo: RecipeRepository) : ViewModel() {
             Toast(
                 message = UiText.res(R.string.toast_deleted, recipe.titleText()),
                 actionLabel = UiText.Res(R.string.action_undo),
-                undo = { viewModelScope.launch { repo.restore(recipe) } },
+                // See deleteSelected: the soft delete left everything in place, so undo
+                // is clearing the stamp and not writing the recipe back over itself.
+                undo = { viewModelScope.launch { repo.restoreDeleted(recipe.id) } },
+            )
+        )
+    }
+
+    /** From the "recently deleted" screen: back into the cookbook, where it was. */
+    fun restoreDeleted(id: String) = viewModelScope.launch { repo.restoreDeleted(id) }
+
+    /** The one delete with no way back, so the screen asks first. */
+    fun deleteForever(id: String) = viewModelScope.launch { repo.deleteForever(id) }
+
+    /**
+     * Writes the whole cookbook to wherever the file picker pointed.
+     *
+     * The [ContentResolver] is a parameter and not a field: the ViewModel outlives the
+     * screen and has no business holding on to a Context.
+     */
+    fun exportTo(resolver: ContentResolver, uri: Uri) = viewModelScope.launch {
+        val count = runCatching {
+            val stream = resolver.openOutputStream(uri) ?: error("no output stream")
+            backup.write(stream)
+        }.getOrElse {
+            toasts.send(Toast(UiText.Res(R.string.backup_toast_export_failed)))
+            return@launch
+        }
+        toasts.send(Toast(UiText.Quantity(R.plurals.backup_toast_exported, count)))
+    }
+
+    /** Reads a backup back in and says what it changed. */
+    fun restoreFrom(resolver: ContentResolver, uri: Uri) = viewModelScope.launch {
+        val opened = runCatching { resolver.openInputStream(uri) ?: error("no input stream") }
+            .getOrElse {
+                toasts.send(Toast(UiText.Res(R.string.backup_toast_restore_failed)))
+                return@launch
+            }
+        val result = opened.use { backup.read(it) }
+        toasts.send(
+            Toast(
+                result.fold(
+                    onSuccess = {
+                        UiText.res(
+                            R.string.backup_toast_restored,
+                            it.added,
+                            it.updated,
+                            it.skipped,
+                        )
+                    },
+                    onFailure = { error ->
+                        UiText.Res(
+                            if (error is BackupError.NewerVersion) R.string.backup_toast_restore_newer
+                            else R.string.backup_toast_restore_failed
+                        )
+                    },
+                )
             )
         )
     }

@@ -33,6 +33,7 @@ import nl.potat04.kookboek.data.Recipe
 import nl.potat04.kookboek.data.SettingsStore
 import nl.potat04.kookboek.ui.AddRecipeSheet
 import nl.potat04.kookboek.ui.CookScreen
+import nl.potat04.kookboek.ui.DeletedScreen
 import nl.potat04.kookboek.ui.EditScreen
 import nl.potat04.kookboek.ui.KookboekViewModel
 import nl.potat04.kookboek.ui.LibraryScreen
@@ -236,6 +237,24 @@ private fun KookboekNavHost(
                 // Handing the language to the platform restarts this activity; the
                 // navigation back stack is restored, so we come back here.
                 onLanguage = context::setAppLanguage,
+                onHaptics = store::setHapticFeedback,
+                onAutoBackup = store::setAutoBackup,
+                // KookboekApp watches this and re-schedules the daily job.
+                onBackupFolder = store::setBackupFolder,
+                onExport = { vm.exportTo(context.contentResolver, it) },
+                onRestore = { vm.restoreFrom(context.contentResolver, it) },
+                onDeleted = { nav.navigate("deleted") },
+                onBack = { nav.popBackStack() },
+                contentPadding = padding,
+            )
+        }
+
+        composable("deleted") {
+            val binned by vm.deleted.collectAsStateWithLifecycle()
+            DeletedScreen(
+                recipes = binned,
+                onRestore = vm::restoreDeleted,
+                onDeleteForever = vm::deleteForever,
                 onBack = { nav.popBackStack() },
                 contentPadding = padding,
             )

@@ -70,6 +70,28 @@ geeft een `Result` terug en nooit een exception: onbekende sleutels worden geneg
 `version` wordt geweigerd met een `DecodeError.NewerVersion`. Zip en bestands-IO horen hier niet;
 dat doet de backup-laag erboven.
 
+**`Backup`** (in `data/Backup.kt`) ís die laag: `RecipeJson` plus de foto's in één zip, en terug.
+Hij praat alleen met de `RecipeRepository`, nooit met de DAO, zodat een restore in dezelfde
+molen valt als een import. `data/BackupFolder.kt` ernaast is het enige wat SAF spreekt.
+Zie [data.md](data.md).
+
+## Eén geplande taak
+
+WorkManager (`androidx.work:work-runtime-ktx`) draait precies één ding: `BackupWorker`, elke 24 uur,
+onder de unieke naam `auto-backup`. Dat is de reden dat de library er is — een back-up moet ook
+gebeuren op de dagen dat niemand de app opent, en dat is nu net de dag dat je erachter komt dat je
+er een nodig had.
+
+`KookboekApp` plant hem in door naar de instellingen te kijken (`autoBackup` en `backupFolder`) en
+niet vanuit het instellingenscherm. Zo landt ook een restore van de preferences op een nieuw
+toestel bij de planner. Bij het opstarten draait er daarnaast een inhaalslag als de laatste
+back-up ouder is dan een dag.
+
+De worker zoekt de repository op via `KookboekApp`, want hij kan de reden zijn dat het proces
+draait, en een tweede `RecipeStore` zou een tweede Room op hetzelfde bestand zijn. Hij wacht op
+`repository.loaded` voordat hij schrijft: een lege lijst back-uppen over een goede back-up heen is
+het enige wat deze functie echt fout kan doen.
+
 ## Er gaat geen taal naar beneden
 
 De onderste lagen weten niet welke taal gekozen is, en horen dat ook niet te weten. Een recept
@@ -91,11 +113,11 @@ aparte, grotere verandering, en dan raak je elk scherm.
 
 ## Navigatie
 
-`MainActivity` gebruikt `navigation-compose` met vijf bestemmingen: bibliotheek, recept, koken,
-bewerken, instellingen. `cook/{id}` komt bovenop `recipe/{id}` te liggen, dus Terug (en het
-kruisje) zetten je terug bij hetzelfde recept. Net als de andere bestemmingen met een id heeft
-het de `LeaveWhenGone`-wacht: verdwijnt het recept onder je vandaan, dan loopt het scherm weg in
-plaats van leeg te blijven staan.
+`MainActivity` gebruikt `navigation-compose` met zes bestemmingen: bibliotheek, recept, koken,
+bewerken, instellingen en `deleted` (de prullenbak, vanuit de instellingen). `cook/{id}` komt
+bovenop `recipe/{id}` te liggen, dus Terug (en het kruisje) zetten je terug bij hetzelfde recept.
+Net als de andere bestemmingen met een id heeft het de `LeaveWhenGone`-wacht: verdwijnt het
+recept onder je vandaan, dan loopt het scherm weg in plaats van leeg te blijven staan.
 `ShareActivity` is een losse activity met een doorzichtig thema (`Theme.Kookboek.Sheet`), zodat
 het deelvenster over je browser zweeft in plaats van de hele app te openen.
 

@@ -10,6 +10,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -77,6 +78,28 @@ class ImageStore(context: Context) {
                 BitmapFactory.decodeFile(f.absolutePath)?.asImageBitmap()?.also { cache.put(name, it) }
             }.getOrNull()
         }
+    }
+
+    /**
+     * Copies a picture out of a backup, under the name it had there. Leaves [input]
+     * open: it is one entry of a zip the caller is still walking through.
+     *
+     * A file that is already here is left alone. The name is the recipe's id, so the
+     * same name is the same picture, and overwriting would only cost a rewrite.
+     *
+     * @return true when a new file was written.
+     */
+    suspend fun importFile(name: String, input: InputStream): Boolean = withContext(Dispatchers.IO) {
+        val target = File(dir, File(name).name)
+        if (target.exists()) return@withContext false
+        runCatching {
+            target.outputStream().use { input.copyTo(it) }
+            true
+        }.onFailure {
+            Log.w(TAG, "could not import $name", it)
+            // A half-written file would decode to nothing and stay there forever.
+            target.delete()
+        }.getOrDefault(false)
     }
 
     /**
