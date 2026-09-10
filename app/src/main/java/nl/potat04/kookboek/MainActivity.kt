@@ -32,6 +32,7 @@ import androidx.navigation.compose.rememberNavController
 import nl.potat04.kookboek.data.Recipe
 import nl.potat04.kookboek.data.SettingsStore
 import nl.potat04.kookboek.ui.AddRecipeSheet
+import nl.potat04.kookboek.ui.CookScreen
 import nl.potat04.kookboek.ui.EditScreen
 import nl.potat04.kookboek.ui.KookboekViewModel
 import nl.potat04.kookboek.ui.LibraryScreen
@@ -178,6 +179,7 @@ private fun KookboekNavHost(
                     busy = busy,
                     onBack = { nav.popBackStack() },
                     onEdit = { nav.navigate("edit/${recipe.id}") },
+                    onCook = { nav.navigate("cook/${recipe.id}") },
                     onToggleFavourite = { vm.toggleFavourite(recipe) },
                     onToggleIngredient = { vm.toggleIngredient(recipe, it) },
                     onToggleStep = { vm.toggleStep(recipe, it) },
@@ -188,6 +190,25 @@ private fun KookboekNavHost(
                     // disappearing and walks back — one place decides, so we cannot
                     // pop twice and empty the whole back stack.
                     onDelete = { vm.delete(recipe) },
+                    contentPadding = padding,
+                )
+            }
+        }
+
+        composable("cook/{id}") { entry ->
+            val id = entry.arguments?.getString("id")
+            val recipe = all.firstOrNull { it.id == id }
+            if (recipe == null) {
+                LeaveWhenGone(entry, nav, id, loaded)
+            } else {
+                CookScreen(
+                    recipe = recipe,
+                    // Back and the close control do the same thing: land on the recipe
+                    // screen, at the recipe you were cooking.
+                    onClose = { nav.popBackStack() },
+                    onToggleStep = { vm.toggleStep(recipe, it) },
+                    onToggleIngredient = { vm.toggleIngredient(recipe, it) },
+                    onNotify = vm::notify,
                     contentPadding = padding,
                 )
             }

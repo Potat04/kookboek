@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="cook_open">Koken</string>
+    <string name="cook_counter">%1$d / %2$d</string>
+    <string name="cook_hint">Tik rechts voor de volgende stap, links om terug te gaan</string>
+    <string name="cook_next_step">Volgende stap</string>
+    <string name="cook_previous_step">Vorige stap</string>
+    <string name="cook_step_done">Stap klaar</string>
+    <string name="cook_timer_started">Timer gezet</string>
+    <string name="cook_timer_unavailable">Geen app op deze telefoon zet een timer</string>
+</resources>

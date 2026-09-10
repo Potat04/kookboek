@@ -79,6 +79,7 @@ fun RecipeScreen(
     recipe: Recipe,
     onBack: () -> Unit,
     onEdit: () -> Unit,
+    onCook: () -> Unit,
     onToggleFavourite: () -> Unit,
     onToggleIngredient: (Int) -> Unit,
     onToggleStep: (Int) -> Unit,
@@ -230,7 +231,13 @@ fun RecipeScreen(
         }
 
         if (recipe.steps.isNotEmpty()) {
-            item { SectionHeader(stringResource(R.string.recipe_method)) }
+            item {
+                SectionHeader(
+                    title = stringResource(R.string.recipe_method),
+                    // Where the steps begin is where you decide to stand up and cook.
+                    trailing = { CookButton(onClick = onCook) },
+                )
+            }
             itemsIndexed(recipe.steps) { index, step ->
                 val previous = recipe.steps.getOrNull(index - 1)?.section
                 if (step.section != null && step.section != previous) {
@@ -362,7 +369,11 @@ private fun DetailBar(
 }
 
 @Composable
-private fun SectionHeader(title: String, action: Pair<String, () -> Unit>? = null) {
+private fun SectionHeader(
+    title: String,
+    action: Pair<String, () -> Unit>? = null,
+    trailing: (@Composable () -> Unit)? = null,
+) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -376,6 +387,7 @@ private fun SectionHeader(title: String, action: Pair<String, () -> Unit>? = nul
                 Text(label, style = MaterialTheme.typography.labelMedium)
             }
         }
+        trailing?.invoke()
     }
 }
 

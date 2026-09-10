@@ -195,6 +195,25 @@ kopie zou daarna naar iets wijzen dat er niet meer is.
 Opnieuw ophalen gaat één voor één. Er is maar één `ChallengeStage`, dus meerdere WebViews
 tegelijk zouden om die ene plek vechten. Zie [fetching.md](fetching.md).
 
+## Kookstand
+
+Hetzelfde recept heeft twee lezingen. Op de bank lees je een document: foto, inleiding, alles
+onder elkaar. Bij het fornuis wil je één ding weten en dan je handen weer vrij hebben. Daarom is
+er naast `RecipeScreen` een `ui/CookScreen.kt`, te bereiken via de knop in de kop van *Bereiding*
+en de route `cook/{id}`.
+
+Eén stap per pagina in `headlineMedium` (serif, en dus mee-schalend met de tekstgrootte), de
+groepskop van die stap klein erboven, en verder alleen een teller "3 / 9" en een kruisje. Tikken
+op de rechterhelft is verder, links is terug, vegen doet hetzelfde; de eerste keer staat er
+onderaan een regel die dat zegt, en die verdwijnt zodra je het één keer gedaan hebt. De helften
+liggen ónder de tekst en luisteren als ouder mee, zodat een aangetikte tijdsduur (`DurationText`)
+en het vinkje hun tik houden en de rest van het scherm doorpakt.
+
+De ingrediënten komen als sheet omhoog en laten de stap staan; ligt de telefoon dwars, dan staan
+ze als kolom links en is er niets om te trekken. Ze zijn omgerekend naar `cookedServings` en de
+vinkjes zijn dezelfde als op het receptscherm. Een stap afvinken blijft een bewuste tik: automatisch
+afvinken bij het doorbladeren zou de stap aankruisen waar je alleen even naar vooruit keek.
+
 ## UX-regels die niet onderhandelbaar zijn
 
 - **Nederlands en Engels, met Engels als terugvaloptie.** Zie
@@ -204,7 +223,8 @@ tegelijk zouden om die ene plek vechten. Zie [fetching.md](fetching.md).
   Geen leeg recept dat doet alsof.
 - **Een lege lijst is pas leeg als `loaded` waar is.** Anders flitst "je hebt nog geen recepten"
   voorbij bij het opstarten.
-- **Het scherm blijft aan** op het receptscherm. Je handen zitten onder het deeg.
+- **Het scherm blijft aan** op het receptscherm en in de kookstand. Je handen zitten onder het
+  deeg.
 - **Verwijderen is altijd terug te draaien** via de snackbar, inclusief de foto. Die ene knop is de
   enige weg terug, dus hij mag nooit de zwakst leesbare tekst in de app zijn. Vandaar de
   expliciete `inverse*`-waarden.
