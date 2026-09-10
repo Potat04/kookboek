@@ -47,6 +47,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Done
@@ -56,6 +57,9 @@ import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Done
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -634,19 +638,19 @@ private fun DetailBar(
                     onClick = onCopyIngredients,
                 ),
             )
-            add(MenuEntry(stringResource(R.string.recipe_made_it), Icons.Default.Done, onClick = onMadeIt))
+            add(MenuEntry(stringResource(R.string.recipe_made_it), Icons.Outlined.Done, onClick = onMadeIt))
             // Three ways out of the app: to whoever you talk to, to another Kookboek,
             // and onto paper. See ui/Sharing.kt and ui/PrintRecipe.kt.
-            add(MenuEntry(stringResource(R.string.share_as_text), Icons.Default.Share) {
+            add(MenuEntry(stringResource(R.string.share_as_text), Icons.Outlined.Share) {
                 context.shareRecipeText(listOf(recipe))
             })
-            add(MenuEntry(stringResource(R.string.share_as_file), Icons.AutoMirrored.Filled.Send) {
+            add(MenuEntry(stringResource(R.string.share_as_file), Icons.AutoMirrored.Outlined.Send) {
                 // Writing the zip is real work, so it waits for a scope rather than
                 // holding up the menu closing.
                 scope.launch { images?.let { context.shareRecipeFile(listOf(recipe), it) } }
             })
             add(MenuEntry(stringResource(R.string.share_print), PrintIcon) { context.printRecipe(recipe, images) })
-            add(MenuEntry(stringResource(R.string.action_delete), Icons.Default.Delete, onClick = onDelete))
+            add(MenuEntry(stringResource(R.string.action_delete), Icons.Outlined.Delete, onClick = onDelete))
         }
         Box {
             IconButton(onClick = { menu = true }) {
