@@ -10,6 +10,7 @@ import nl.potat04.kookboek.data.Step
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
+import org.jsoup.nodes.TextNode
 import org.jsoup.parser.Parser
 import java.net.URI
 
@@ -308,8 +309,10 @@ object RecipeParser {
             ?: urlTitle(url)
 
         val ingredients = pluginList(doc, PLUGIN_INGREDIENTS)
+            .ifEmpty { looseList(doc, LOOSE_INGREDIENTS) }
             .ifEmpty { listAfterHeading(doc, INGREDIENT_WORDS) }
         val steps = pluginList(doc, PLUGIN_STEPS)
+            .ifEmpty { looseList(doc, LOOSE_STEPS) }
             .ifEmpty { listAfterHeading(doc, STEP_WORDS) }
 
         return ParsedRecipe(
@@ -332,25 +335,67 @@ object RecipeParser {
         ".mv-create-ingredients li",
         ".recipe-ingredients li",
         ".ingredients-list li",
-        "[class*=ingredient] li",
     )
     private val PLUGIN_STEPS = listOf(
         ".wprm-recipe-instruction-text",
         ".tasty-recipes-instructions li",
         ".mv-create-instructions li",
         ".recipe-instructions li",
-        "[class*=instruction] li",
-        "[class*=direction] li",
     )
+
+    /** Words a container may name itself after when no plugin markup was found. */
+    private val LOOSE_INGREDIENTS = listOf("ingredient")
+    private val LOOSE_STEPS = listOf("instruction", "direction")
+
+    /** The menu, the header and the footer are the site, not the recipe. */
+    private const val FURNITURE = "nav, header, footer, aside, [role=navigation], [class*=menu]"
+
+    /** No recipe lists this many things; past it we are reading the whole page. */
+    private const val MAX_ITEMS = 80
 
     private fun pluginList(doc: Document, selectors: List<String>): List<String> {
         for (sel in selectors) {
             val items = runCatching { doc.select(sel) }.getOrNull() ?: continue
-            val texts = items.map { clean(it.text()) }.filter { it.isNotBlank() && it.length < 400 }
-                .distinct()
+            val texts = itemTexts(items)
             if (texts.size >= 2) return texts
         }
         return emptyList()
+    }
+
+    /**
+     * Last resort: a container that names itself after what we are looking for.
+     *
+     * This needs guarding, because a class name is not a promise. uitpaulineskeuken.nl
+     * puts `wprm-no-ingredients` on its `<body>` to say the recipe card is empty, and
+     * a bare `[class*=ingredient] li` read that as "here are the ingredients" and
+     * handed back all 216 links in the site's menu.
+     */
+    private fun looseList(doc: Document, words: List<String>): List<String> {
+        for (word in words) {
+            for (container in doc.select("[class*=$word]")) {
+                if (!container.namesItself(word)) continue
+                val texts = itemTexts(container.select("li"))
+                if (texts.size >= 2) return texts
+            }
+        }
+        return emptyList()
+    }
+
+    /** True when a class on this element claims the word, and does not deny it. */
+    private fun Element.namesItself(word: String): Boolean {
+        if (normalName() == "body" || normalName() == "html") return false
+        return classNames().any {
+            val c = it.lowercase()
+            c.contains(word) && !c.contains("no-$word") && !c.contains("without-$word")
+        }
+    }
+
+    private fun itemTexts(items: List<Element>): List<String> {
+        val texts = items.filter { it.closest(FURNITURE) == null }
+            .map { clean(it.text()) }
+            .filter { it.isNotBlank() && it.length < 400 }
+            .distinct()
+        return if (texts.size > MAX_ITEMS) emptyList() else texts
     }
 
     /** Finds a heading whose text mentions one of [words] and returns the list that follows it. */
@@ -359,9 +404,48 @@ object RecipeParser {
         for (h in headings) {
             val t = h.text().lowercase()
             if (t.length > 60 || words.none { t.contains(it) }) continue
-            listFollowing(h)?.let { if (it.size >= 2) return it }
+            if (h.closest(FURNITURE) != null) continue
+            val inline = inlineLinesAfter(h)
+            if (inline.size >= 2) return inline
+            // One line behind the heading is the first item; the rest follows in the
+            // paragraphs after it, which is how these blogs write their steps.
+            val combined = inline + listFollowing(h).orEmpty()
+            if (combined.size >= 2) return combined
         }
         return emptyList()
+    }
+
+    /**
+     * Reads the lines that sit behind the heading in its own paragraph.
+     *
+     * Blogs older than the recipe plugins type the whole list into one `<p>`: the
+     * heading in bold, then a line per `<br>`. Those lines are text nodes, so
+     * [listFollowing], which walks over sibling *elements*, never sees them.
+     */
+    private fun inlineLinesAfter(heading: Element): List<String> {
+        val parent = heading.parent() ?: return emptyList()
+        if (parent.select("br").isEmpty()) return emptyList()
+
+        val lines = mutableListOf<String>()
+        val line = StringBuilder()
+        var passedHeading = false
+        for (node in parent.childNodes()) {
+            if (node === heading) {
+                passedHeading = true
+                continue
+            }
+            if (!passedHeading) continue
+            when {
+                node is Element && node.normalName() == "br" -> {
+                    lines += line.toString()
+                    line.setLength(0)
+                }
+                node is Element -> line.append(node.text())
+                node is TextNode -> line.append(node.text())
+            }
+        }
+        lines += line.toString()
+        return lines.map(::clean).filter { it.isNotBlank() && it.length < 400 }
     }
 
     private fun listFollowing(heading: Element): List<String>? {

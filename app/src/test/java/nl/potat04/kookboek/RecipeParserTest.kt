@@ -153,6 +153,39 @@ class RecipeParserTest {
     }
 
     @Test
+    fun `uitpaulineskeuken types its recipe into one paragraph`() {
+        val r = fixture(
+            "uitpaulineskeuken",
+            "https://uitpaulineskeuken.nl/recept/recept-gevulde-portobello-met-spinazie",
+        )
+        assertEquals("Gevulde portobello met spinazie", r.title)
+        assertEquals(ParseSource.HTML_HEURISTIC, r.source)
+        // The JSON-LD carries a Recipe with no ingredients and no steps, the recipe
+        // card is empty, and the list is typed into a <p> with <br> between the lines.
+        assertEquals(8, r.ingredients.size)
+        assertEquals("8 portobello’s", r.ingredients.first())
+        assertEquals("90 gr amandelen (geroosterde)", r.ingredients.last())
+        assertEquals(4, r.steps.size)
+        assertTrue(r.steps.first().text.startsWith("Verwarm de oven"))
+        assertEquals(ParseQuality.FULL, r.quality)
+    }
+
+    @Test
+    fun `a class that denies the word is not a list of it`() {
+        // wprm-no-ingredients sits on <body> and means the opposite; reading it as a
+        // container handed back every <li> on the page.
+        val html = """
+            <html><head><title>Portobello - Blog</title></head>
+            <body class="single wprm-no-ingredients">
+              <nav><ul><li>Voorgerechten</li><li>Hoofdgerechten</li><li>Nagerechten</li></ul></nav>
+              <p><strong>Ingrediënten</strong><br>2 portobello's<br>200 gr spinazie<br>90 gr feta</p>
+            </body></html>
+        """.trimIndent()
+        val r = RecipeParser.parse(html, "https://blog.nl/portobello")
+        assertEquals(listOf("2 portobello's", "200 gr spinazie", "90 gr feta"), r.ingredients)
+    }
+
+    @Test
     fun `title falls back to the page title minus the site suffix`() {
         val html = "<html><head><title>Snelle tomatensoep | Lekker Simpel</title></head><body></body></html>"
         val r = RecipeParser.parse(html, "https://lekkersimpel.nl/snelle-tomatensoep")

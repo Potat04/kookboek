@@ -39,6 +39,29 @@ echt aangetroffen en wordt afgevangen:
 - Nummering die de site zelf al in de stap heeft gezet (`"1. Snijd de ui"`) gaat eruit,
   want de app nummert zelf.
 
+## Het vangnet op klasnamen
+
+Vindt de parser geen plugin-markup, dan zoekt `looseList()` een container die zichzelf naar
+ingrediënten of instructies vernoemt (`[class*=ingredient]`). Dat is een gok, en die gok stond
+ooit los in `PLUGIN_INGREDIENTS`. Uitkomst: uitpaulineskeuken.nl zet `wprm-no-ingredients` op zijn
+`<body>` om te zeggen dat de receptkaart leeg is, `body li` pakte daarna elke `<li>` op de pagina,
+en het recept kreeg 216 ingrediënten uit het navigatiemenu.
+
+Vandaar drie grenzen. `body` en `html` tellen niet als container. Een klasse die het woord
+ontkent (`no-ingredient`, `without-ingredient`) telt niet als een belofte. En `itemTexts()` gooit
+alles weg dat in `nav`, `header`, `footer`, `aside` of een menu-klasse zit, en laat een lijst
+vallen zodra die boven `MAX_ITEMS` uitkomt. Geen recept telt tachtig dingen op.
+
+## Lijsten in één alinea
+
+Blogs van vóór de receptplugins typen de hele lijst in één `<p>`: het kopje vet, daarna een regel
+per `<br>`. Die regels zijn tekstknopen, geen elementen, dus `listFollowing()` liep er dwars
+overheen naar de alinea's erna en gaf de bereiding terug als ingrediëntenlijst.
+
+`inlineLinesAfter()` leest ze wel. Twee of meer regels achter het kopje zijn de lijst. Staat er
+één regel, dan is dat het eerste item en volgt de rest in de alinea's erna, wat precies is hoe
+"Zo maak je het" op zo'n pagina geschreven staat.
+
 ## De porties-tekst
 
 `descriptiveYield()` houdt alleen wat méér zegt dan een getal. "15 stuks", "1 loaf" en
