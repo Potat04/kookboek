@@ -174,6 +174,16 @@ een doos van nul bij nul, vangt geen tikken weg en is toch op een echt formaat u
 zodat hem zichtbaar maken geen relayout kost. Pas als de controle om een tik vraagt komt hij
 naar voren, met een kop en een regel uitleg erboven. Zie [fetching.md](fetching.md).
 
+## Papier dat echt papier is
+
+`ui/PrintRecipe.kt` bouwt een HTML-pagina en laat een WebView buiten beeld hem afdrukken; de
+systeemdialoog erachter doet ook "opslaan als PDF", dus dat is één weg voor twee dingen.
+
+Die pagina is **zwarte inkt op wit**, en niet het gekozen palet. Een afdruk heeft geen
+donkerstand, en crèmewit papier natekenen betekent een vel volspuiten om niets te zeggen. Serif
+overal, een lijn onder de titel, en op breed papier de ingrediënten naast de bereiding. Het is de
+enige plek in de app waar de paletregels bewust niet gelden.
+
 ## Meerdere recepten tegelijk
 
 Lang drukken op een kaart in de bibliotheek begint een selectie; daarna voegt een gewone tik toe
@@ -195,6 +205,101 @@ kopie zou daarna naar iets wijzen dat er niet meer is.
 Opnieuw ophalen gaat één voor één. Er is maar één `ChallengeStage`, dus meerdere WebViews
 tegelijk zouden om die ene plek vechten. Zie [fetching.md](fetching.md).
 
+## Kookstand
+
+Hetzelfde recept heeft twee lezingen. Op de bank lees je een document: foto, inleiding, alles
+onder elkaar. Bij het fornuis wil je één ding weten en dan je handen weer vrij hebben. Daarom is
+er naast `RecipeScreen` een `ui/CookScreen.kt`, te bereiken via de knop in de kop van *Bereiding*
+en de route `cook/{id}`.
+
+Eén stap per pagina in `headlineMedium` (serif, en dus mee-schalend met de tekstgrootte), de
+groepskop van die stap klein erboven, en verder alleen een teller "3 / 9" en een kruisje. Tikken
+op de rechterhelft is verder, links is terug, vegen doet hetzelfde; de eerste keer staat er
+onderaan een regel die dat zegt, en die verdwijnt zodra je het één keer gedaan hebt. De helften
+liggen ónder de tekst en luisteren als ouder mee, zodat een aangetikte tijdsduur (`DurationText`)
+en het vinkje hun tik houden en de rest van het scherm doorpakt.
+
+De ingrediënten komen als sheet omhoog en laten de stap staan; ligt de telefoon dwars, dan staan
+ze als kolom links en is er niets om te trekken. Ze zijn omgerekend naar `cookedServings` en de
+vinkjes zijn dezelfde als op het receptscherm. Een stap afvinken blijft een bewuste tik: automatisch
+afvinken bij het doorbladeren zou de stap aankruisen waar je alleen even naar vooruit keek.
+## Het receptscherm
+
+Staand op een telefoon is `ui/RecipeScreen.kt` één `LazyColumn` met sleutels per item (`"bar"`, `"head"`, `"method"`,
+`"step:3"`, `"notes"`). Die sleutels zijn niet alleen voor Compose: het scherm leest eraan af
+waar je bent. Staat het eerste zichtbare item in de bereiding, dan verschijnt rechtsonder een
+klein pilletje "Ingrediënten" dat een `ModalBottomSheet` opent (`ui/IngredientsSheet.kt`) met
+dezelfde omgerekende, afvinkbare lijst. Gesloten staat het nergens voor; scroll je terug naar
+boven, dan is het weg.
+
+De ingrediëntregels zelf staan in `ui/IngredientLines.kt` en worden door het scherm én de sheet
+gebruikt, zodat een groepskop, een vinkje en een omgerekende hoeveelheid op beide plekken
+hetzelfde doen. "Afgevinkte verbergen" op de kop klapt de aangevinkte regels in tot één regel
+"3 klaargezet"; de rest houdt zijn volgorde, en een groep waarvan alles is afgevinkt verliest
+ook zijn kopje. Groepskoppen (`GroupHeading`) zijn voor ingrediënten en stappen dezelfde
+`titleMedium` in `primary`.
+
+**Is er breedte, dan ligt het boek open.** Hetzelfde recept op twee pagina's, met de balk en de
+kop (foto, titel, byline) erboven, daaronder links de ingrediënten en rechts de bereiding met de
+notities eronder. Elke kolom scrollt zelf. `ui/WindowWidth.kt` beslist dat uit niets dan het venster: twee pagina's vanaf
+600dp breed, of vanaf 480dp als het venster breder is dan hoog. Puur en getest
+(`PageShapeTest`), dus er hoeft geen window-size-class-bibliotheek bij voor één boolean.
+
+Ligt de telefoon dwars, dan wordt de foto een vierkantje náást de titel in plaats van een band
+erboven, en gaat de titel van `displaySmall` naar `headlineMedium`. Elke centimeter bovenaan
+gaat namelijk van beide pagina's tegelijk af. De tags (tijd, opbrengst, sitetags) staan dan bij
+de ingrediënten en de inleiding boven de bereiding. Dat houdt de kop kort en zet proza bij proza.
+Het pilletje en de sheet zijn weg, want de ingrediënten staan al in beeld.
+
+Twee dingen die het tegenhouden. Een recept zonder ingrediënten blijft één kolom, want een lege
+halve pagina leest als een storing. En de kop is boven de helft van de vensterhoogte scrollbaar,
+zodat een lange titel op "Extra groot" de pagina's er niet af duwt; bij een normale maat valt er
+niets te scrollen.
+
+De onderdelen zelf (`StepRow`, `CheckLine`, `GroupHeading`, `ServingsStepper`, `NotesField`,
+`Byline`, de ingrediënt- en bereidingsblokken) worden één keer opgebouwd en aan beide lezingen
+uitgedeeld. Staand verandert er dus niets, en er is geen tweede kopie die kan gaan afwijken.
+
+Wat het scherm verder onthoudt en doet:
+
+- **De stepper begint waar je hem achterliet.** `cookedServings` is de laatste stand; het getal
+  van de pagina blijft de basis waar vanaf omgerekend wordt, en de regel "omgerekend vanaf 4"
+  blijft staan. Staat de stepper weer op het origineel, dan schrijft de ViewModel `null`, zodat
+  een opnieuw opgehaalde portie-telling niet onder een oude stand blijft zitten.
+- **"Gemaakt"** (in het menu en stil onderaan de bereiding) zet `lastCookedAt` op nu en neemt
+  één regel mee die met de datum onder de notities komt (`ui/CookedNote.kt`, puur en getest).
+  Onder de byline staat dan "Laatst gemaakt op 10 sep. 2026". Geen sterren, geen teller.
+- **Opnieuw ophalen vraagt eerst** als `editedAt` gezet is. Dat is het enige op dit scherm dat
+  de snackbar niet ongedaan kan maken. Zonder eigen aanpassingen gaat het meteen.
+- **Verwijderen vraagt niks meer.** De dialoog is weg, om dezelfde reden als bij de selectie in
+  de bibliotheek; de snackbar is de weg terug.
+- **Tijden in een stap zijn timers.** `DurationText` onderstreept "20 minuten", een tik zet via
+  `Context.startTimer` een timer in de klok-app zonder die te openen. Is er geen klok-app, dan
+  zegt een snackbar dat (`vm.notify(UiText)`), in plaats van niets te doen.
+- **Een tag of de sitenaam is een zoekopdracht.** `onSearch` zet de query in de ViewModel en
+  gaat terug naar de bibliotheek. Alle tags worden getoond, in een `FlowRow`.
+- **Ingrediënten kopiëren** zet de omgerekende lijst met groepskoppen op het klembord, één regel
+  per ingrediënt (`ui/IngredientsText.kt`, puur en getest).
+- **Foto's gaan open op een tik**: `ui/FullScreenPicture.kt` is een `Dialog` over alles heen,
+  knijpen zoomt, slepen schuift, een tik sluit. Een gefotografeerd receptkaartje
+  (`attachmentFile`) staat heel, niet bijgesneden, onder de notities en opent op dezelfde manier.
+- **Voorbereiding en koken apart** waar de pagina beide gaf: "15 min voorbereiden, 40 min koken"
+  (`timeDetailText()` in `Labels.kt`). De kaart in de bibliotheek houdt het totaal; die heeft
+  één regel.
+- **De plus en min van de stepper zijn getekend**, op de hoogte van de cijfers ertussen. Een
+  typografische min is een derde van het getal en leest als een vlekje vanaf het aanrecht.
+- **"Bewaard"** verschijnt even onder de notities nadat de autosave gevuurd heeft, in een vakje
+  met vaste hoogte zodat de pagina niet verspringt.
+- **Tekst in stappen en ingrediënten is te selecteren** (`SelectionContainer`); een korte tik
+  vinkt nog steeds af, want de selectie claimt de aanraking pas als hij lang wordt.
+- **Een vinkje trilt kort** (`HapticFeedbackType.Confirm`) als `Settings.hapticFeedback` aan
+  staat; het scherm krijgt dat als `haptics: Boolean`.
+- **`markOpened`** loopt één keer bij het openen; de repository zet `openedAt` alleen als hij
+  nog leeg is.
+
+Het overloopmenu en de sectiekoppen zijn geordende lijsten (`MenuEntry`, `HeaderAction`), niet
+geneste `if`s: wie er iets aan toevoegt, voegt één regel toe.
+
 ## UX-regels die niet onderhandelbaar zijn
 
 - **Nederlands en Engels, met Engels als terugvaloptie.** Zie
@@ -204,7 +309,8 @@ tegelijk zouden om die ene plek vechten. Zie [fetching.md](fetching.md).
   Geen leeg recept dat doet alsof.
 - **Een lege lijst is pas leeg als `loaded` waar is.** Anders flitst "je hebt nog geen recepten"
   voorbij bij het opstarten.
-- **Het scherm blijft aan** op het receptscherm. Je handen zitten onder het deeg.
+- **Het scherm blijft aan** op het receptscherm en in de kookstand. Je handen zitten onder het
+  deeg.
 - **Verwijderen is altijd terug te draaien** via de snackbar, inclusief de foto. Die ene knop is de
   enige weg terug, dus hij mag nooit de zwakst leesbare tekst in de app zijn. Vandaar de
   expliciete `inverse*`-waarden.

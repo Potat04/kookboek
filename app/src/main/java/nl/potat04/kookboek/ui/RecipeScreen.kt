@@ -1,14 +1,23 @@
 package nl.potat04.kookboek.ui
 
 import android.app.Activity
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.view.WindowManager
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -16,62 +25,94 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Done
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import nl.potat04.kookboek.R
 import nl.potat04.kookboek.data.ParseQuality
 import nl.potat04.kookboek.data.Recipe
-import nl.potat04.kookboek.parse.Scaling
 import nl.potat04.kookboek.ui.theme.controlOutline
+
+// Item keys the scroll position is read against. The pill with the ingredients
+// shows while the first visible item is one of the method's.
+private const val KEY_METHOD = "method"
+private const val KEY_METHOD_END = "method-end"
+private const val KEY_STEP = "step:"
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -79,6 +120,7 @@ fun RecipeScreen(
     recipe: Recipe,
     onBack: () -> Unit,
     onEdit: () -> Unit,
+    onCook: () -> Unit,
     onToggleFavourite: () -> Unit,
     onToggleIngredient: (Int) -> Unit,
     onToggleStep: (Int) -> Unit,
@@ -86,165 +128,235 @@ fun RecipeScreen(
     onNotes: (String) -> Unit,
     onRefresh: () -> Unit,
     onDelete: () -> Unit,
+    onSearch: (String) -> Unit,
+    onServings: (Int) -> Unit,
+    onMadeIt: (note: String?) -> Unit,
+    onNotify: (UiText) -> Unit,
+    onOpened: () -> Unit,
+    haptics: Boolean,
     busy: Boolean,
     contentPadding: PaddingValues,
 ) {
     KeepScreenOn()
     val context = LocalContext.current
+    val title = recipe.displayTitle()
 
-    var servings by remember(recipe.id) { mutableStateOf(recipe.servings) }
+    LaunchedEffect(recipe.id) { onOpened() }
+
+    // The stepper picks up where it was left last time; the page's own number stays
+    // the base the amounts are scaled from.
+    var servings by remember(recipe.id) { mutableStateOf(recipe.cookedServings ?: recipe.servings) }
     val factor = remember(servings, recipe.servings) {
         val base = recipe.servings
         if (base == null || base <= 0 || servings == null) 1.0 else servings!!.toDouble() / base
     }
-    var confirmDelete by remember { mutableStateOf(false) }
 
-    LazyColumn(
-        contentPadding = PaddingValues(
-            start = 20.dp,
-            end = 20.dp,
-            top = contentPadding.calculateTopPadding(),
-            bottom = contentPadding.calculateBottomPadding() + 48.dp,
-        ),
-    ) {
-        item {
-            DetailBar(
-                recipe = recipe,
-                busy = busy,
-                onBack = onBack,
-                onEdit = onEdit,
-                onToggleFavourite = onToggleFavourite,
-                onRefresh = onRefresh,
-                onDelete = { confirmDelete = true },
+    val haptic = LocalHapticFeedback.current
+    fun tick() {
+        if (haptics) haptic.performHapticFeedback(HapticFeedbackType.Confirm)
+    }
+    val tickIngredient: (Int) -> Unit = { tick(); onToggleIngredient(it) }
+    val tickStep: (Int) -> Unit = { tick(); onToggleStep(it) }
+
+    var foldTicked by rememberSaveable { mutableStateOf(false) }
+    var sheetOpen by remember { mutableStateOf(false) }
+    var madeItOpen by remember { mutableStateOf(false) }
+    var confirmRefetch by remember { mutableStateOf(false) }
+    var fullScreen by remember { mutableStateOf<String?>(null) }
+
+    // Refetching over hand-edited lines is the one thing here the snackbar cannot undo.
+    val refetch = { if (recipe.editedAt != null) confirmRefetch = true else onRefresh() }
+
+    val noClock = UiText.Res(R.string.recipe_no_clock)
+    val onTimer: (Int) -> Unit = { seconds ->
+        if (!context.startTimer(seconds, title)) onNotify(noClock)
+    }
+
+    val copyIngredients = {
+        val text = IngredientsText.clipboard(recipe.ingredients, factor)
+        context.getSystemService(ClipboardManager::class.java)
+            .setPrimaryClip(ClipData.newPlainText(title, text))
+        onNotify(UiText.Res(R.string.recipe_copied))
+    }
+
+    val listState = rememberLazyListState()
+    val inMethod by remember(listState) {
+        derivedStateOf {
+            val first = listState.layoutInfo.visibleItemsInfo.firstOrNull()?.key as? String
+            first != null && (first == KEY_METHOD || first == KEY_METHOD_END || first.startsWith(KEY_STEP))
+        }
+    }
+
+    // One recipe, two readings. Standing up on a phone it is a document in a single
+    // column; from 600dp of width, or turned sideways, the book lies open with the
+    // ingredients on the left page and the method on the right. Everything the two
+    // share is built once here and dealt out to whichever reading is on screen, so a
+    // step row, a tick and the stepper cannot drift apart between them.
+    val bar = @Composable {
+        DetailBar(
+            recipe = recipe,
+            busy = busy,
+            onBack = onBack,
+            onEdit = onEdit,
+            onToggleFavourite = onToggleFavourite,
+            onRefresh = refetch,
+            onCopyIngredients = copyIngredients,
+            onMadeIt = { madeItOpen = true },
+            onDelete = onDelete,
+        )
+    }
+
+    val byline = @Composable {
+        Byline(recipe, onSearch = onSearch, onWatch = { context.openLink(it) })
+        recipe.lastMadeText()?.let {
+            Text(
+                it,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+    }
 
-        if (recipe.imageFile != null) {
-            item {
-                RecipeImage(
-                    fileName = recipe.imageFile,
-                    title = recipe.title,
-                    corner = 10.dp,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(16f / 10f),
+    val headnote = @Composable {
+        if (!recipe.description.isNullOrBlank()) {
+            Text(
+                recipe.description,
+                // The blurb the site opens with. It used to be 15sp muted italic
+                // sans, which is the hardest thing to read on the whole screen —
+                // a paragraph you actually read deserves reading size and full
+                // ink. The serif italic keeps it apart from the steps without
+                // making it faint.
+                style = MaterialTheme.typography.bodyLarge,
+                fontFamily = FontFamily.Serif,
+                fontStyle = FontStyle.Italic,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+        }
+    }
+
+    val tagRow = @Composable {
+        // Flows onto a second line rather than squeezing: a site tag like
+        // "Aziatische recepten" is long, and at the larger text sizes four tags no
+        // longer fit across a phone.
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            recipe.timeDetailText()?.let { Tag(it) }
+            // Scale the yield along with the ingredients, or "15 stuks" would sit
+            // there contradicting a stepper that says 17. The count goes in too, so
+            // that the plural agrees with the number actually shown.
+            recipe.servingsText(count = servings ?: recipe.servings, factor = factor)
+                ?.let { Tag(it) }
+            // Every tag the site gave, and each one is a search.
+            recipe.tags.forEach { tag ->
+                val label = stringResource(R.string.recipe_search_for, tag)
+                Tag(
+                    tag,
+                    Modifier
+                        .clip(RoundedCornerShape(4.dp))
+                        .clickable(onClickLabel = label, role = Role.Button) { onSearch(tag) },
                 )
-                Spacer(Modifier.height(20.dp))
             }
         }
+    }
 
-        item {
-            Text(recipe.displayTitle(), style = MaterialTheme.typography.displaySmall)
-            Spacer(Modifier.height(8.dp))
-            // Sites that publish themselves as the author give "24Kitchen · 24Kitchen".
-            val byline = listOfNotNull(recipe.author, recipe.siteName)
-                .distinctBy { it.lowercase() }
-                .joinToString(" · ")
-            if (byline.isNotBlank()) {
-                Text(
-                    byline,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            if (!recipe.description.isNullOrBlank()) {
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    recipe.description,
-                    // The blurb the site opens with. It used to be 15sp muted italic
-                    // sans, which is the hardest thing to read on the whole screen —
-                    // a paragraph you actually read deserves reading size and full
-                    // ink. The serif italic keeps it apart from the steps without
-                    // making it faint.
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontFamily = FontFamily.Serif,
-                    fontStyle = FontStyle.Italic,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-            }
-            Spacer(Modifier.height(14.dp))
-            // Flows onto a second line rather than squeezing: a site tag like
-            // "Aziatische recepten" is long, and at the larger text sizes four tags no
-            // longer fit across a phone.
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                recipe.timeText()?.let { Tag(it) }
-                // Scale the yield along with the ingredients, or "15 stuks" would sit
-                // there contradicting a stepper that says 17. The count goes in too, so
-                // that the plural agrees with the number actually shown.
-                recipe.servingsText(count = servings ?: recipe.servings, factor = factor)
-                    ?.let { Tag(it) }
-                recipe.tags.take(2).forEach { Tag(it) }
-            }
-            Spacer(Modifier.height(20.dp))
-        }
+    val unreadCard = @Composable {
+        CouldNotRead(
+            recipe = recipe,
+            hasSource = recipe.sourceUrl != null,
+            onOpen = { recipe.sourceUrl?.let { context.openLink(it) } },
+            onRetry = refetch,
+            onWrite = onEdit,
+        )
+    }
 
-        if (recipe.quality == ParseQuality.LINK_ONLY) {
-            item {
-                CouldNotRead(
-                    hasSource = recipe.sourceUrl != null,
-                    onOpen = { recipe.sourceUrl?.let { context.openLink(it) } },
-                    onRetry = onRefresh,
-                    onWrite = onEdit,
-                )
-                Spacer(Modifier.height(24.dp))
-            }
-        }
-
+    val ingredientsPage: LazyListScope.() -> Unit = {
         if (recipe.ingredients.isNotEmpty()) {
-            item {
+            item(key = "ingredients") {
+                val ticked = recipe.checkedIngredients.isNotEmpty()
+                val anyChecks = ticked || recipe.checkedSteps.isNotEmpty()
                 SectionHeader(
                     title = stringResource(R.string.recipe_ingredients),
-                    action = if (recipe.checkedIngredients.isNotEmpty() || recipe.checkedSteps.isNotEmpty())
-                        stringResource(R.string.recipe_clear_checks) to onClearChecks else null,
+                    actions = buildList {
+                        if (ticked) add(
+                            HeaderAction(
+                                stringResource(
+                                    if (foldTicked) R.string.recipe_unfold_ticked
+                                    else R.string.recipe_fold_ticked
+                                )
+                            ) { foldTicked = !foldTicked },
+                        )
+                        if (anyChecks) add(
+                            HeaderAction(stringResource(R.string.recipe_clear_checks), onClick = onClearChecks),
+                        )
+                    },
                 )
                 if (recipe.servings != null && recipe.servings > 0) {
                     ServingsStepper(
                         base = recipe.servings,
                         current = servings ?: recipe.servings,
-                        onChange = { servings = it },
+                        onChange = { servings = it; onServings(it) },
                     )
                     Spacer(Modifier.height(6.dp))
                 }
             }
-            itemsIndexed(recipe.ingredients) { index, line ->
-                CheckLine(
-                    text = if (factor == 1.0) line else Scaling.scale(line, factor),
-                    checked = index in recipe.checkedIngredients,
-                    onToggle = { onToggleIngredient(index) },
-                )
-            }
-            item { Spacer(Modifier.height(26.dp)) }
+            ingredientLines(
+                ingredients = recipe.ingredients,
+                checked = recipe.checkedIngredients,
+                factor = factor,
+                foldTicked = foldTicked,
+                keyPrefix = "ingredient",
+                onToggle = tickIngredient,
+                onUnfold = { foldTicked = false },
+            )
+            item(key = "ingredients-end") { Spacer(Modifier.height(26.dp)) }
         }
+    }
 
+    val methodPage: LazyListScope.() -> Unit = {
         if (recipe.steps.isNotEmpty()) {
-            item { SectionHeader(stringResource(R.string.recipe_method)) }
-            itemsIndexed(recipe.steps) { index, step ->
-                val previous = recipe.steps.getOrNull(index - 1)?.section
-                if (step.section != null && step.section != previous) {
-                    Spacer(Modifier.height(10.dp))
-                    Text(
-                        step.section,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(bottom = 6.dp),
-                    )
+            item(key = KEY_METHOD) {
+                // Ordered on purpose: whatever else wants a place in this header
+                // adds an entry here.
+                val methodActions = buildList {
+                    // Where the steps begin is where you decide to stand up and cook.
+                    add(HeaderAction(stringResource(R.string.cook_open), onClick = onCook))
                 }
+                SectionHeader(stringResource(R.string.recipe_method), actions = methodActions)
+            }
+            itemsIndexed(recipe.steps, key = { index, _ -> "$KEY_STEP$index" }) { index, step ->
+                val previous = recipe.steps.getOrNull(index - 1)?.section
+                if (step.section != null && step.section != previous) GroupHeading(step.section)
                 StepRow(
                     number = index + 1,
                     text = step.text,
                     done = index in recipe.checkedSteps,
-                    onToggle = { onToggleStep(index) },
+                    onToggle = { tickStep(index) },
+                    onTimer = onTimer,
                 )
             }
-            item { Spacer(Modifier.height(26.dp)) }
+            item(key = KEY_METHOD_END) {
+                Spacer(Modifier.height(6.dp))
+                // Quiet on purpose: a pencilled date in the margin, not a rating.
+                TextButton(onClick = { madeItOpen = true }) {
+                    Icon(Icons.Default.Done, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.recipe_made_it), style = MaterialTheme.typography.labelMedium)
+                }
+                Spacer(Modifier.height(20.dp))
+            }
         }
+    }
 
-        item {
+    val notesPage: LazyListScope.() -> Unit = {
+        item(key = "notes") {
             SectionHeader(stringResource(R.string.recipe_notes))
             NotesField(recipe.notes, onNotes)
+            recipe.attachmentFile?.let { file ->
+                Spacer(Modifier.height(16.dp))
+                AttachmentPicture(file) { fullScreen = file }
+            }
             Spacer(Modifier.height(24.dp))
             recipe.sourceUrl?.let { url ->
                 val where = recipe.siteName
@@ -256,32 +368,216 @@ fun RecipeScreen(
         }
     }
 
-    if (confirmDelete) {
-        AlertDialog(
-            onDismissRequest = { confirmDelete = false },
-            title = {
-                Text(
-                    stringResource(R.string.recipe_delete_title),
-                    style = MaterialTheme.typography.titleLarge,
-                )
-            },
-            text = {
-                Text(stringResource(R.string.recipe_delete_body, recipe.displayTitle()))
-            },
-            confirmButton = {
-                TextButton(onClick = { confirmDelete = false; onDelete() }) {
-                    Text(stringResource(R.string.action_delete))
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val shape = PageShape.of(maxWidth, maxHeight)
+        // Held here because the row and column scopes below shadow this one.
+        val windowHeight = maxHeight
+        val bottom = contentPadding.calculateBottomPadding()
+        // A recipe the parser could only take the steps off has nothing to put on the
+        // left page, and a blank half of the screen reads as a fault. Room is a
+        // condition for opening the book; something to put on both pages is the other.
+        val twoPages = shape.twoPages && recipe.ingredients.isNotEmpty()
+
+        if (twoPages) {
+            // A window that widens while the sheet is up (a fold opening, a phone
+            // turned) would leave it hanging over ingredients that are now in plain
+            // sight on the left page.
+            LaunchedEffect(Unit) { sheetOpen = false }
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .padding(start = 20.dp, end = 20.dp, top = contentPadding.calculateTopPadding()),
+            ) {
+                bar()
+                // Both pages hang off one heading. It scrolls only where a long title
+                // at the largest text size would otherwise push the pages off the
+                // bottom; at any normal size there is nothing to scroll.
+                Column(
+                    Modifier
+                        .heightIn(max = windowHeight * 0.5f)
+                        .verticalScroll(rememberScrollState()),
+                ) {
+                    Row(verticalAlignment = Alignment.Top) {
+                        recipe.imageFile?.let { file ->
+                            val open = stringResource(R.string.recipe_picture_open)
+                            RecipeImage(
+                                fileName = file,
+                                title = recipe.title,
+                                corner = 10.dp,
+                                modifier = Modifier
+                                    // Sideways on a phone the photo becomes a stamp
+                                    // beside the title. Every band across the top is
+                                    // height taken off both pages at once, and the
+                                    // pages are what you came for.
+                                    .height(if (shape.shortHeader) 92.dp else 148.dp)
+                                    .aspectRatio(if (shape.shortHeader) 1f else 4f / 3f)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .clickable(onClickLabel = open) { fullScreen = file },
+                            )
+                            Spacer(Modifier.width(18.dp))
+                        }
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                title,
+                                style = if (shape.shortHeader) MaterialTheme.typography.headlineMedium
+                                else MaterialTheme.typography.displaySmall,
+                            )
+                            Spacer(Modifier.height(6.dp))
+                            byline()
+                        }
+                    }
+                    Spacer(Modifier.height(14.dp))
                 }
-            },
-            dismissButton = {
-                TextButton(onClick = { confirmDelete = false }) {
-                    Text(stringResource(R.string.action_cancel))
+                // The rule under the title, as on the printed page.
+                Rule()
+                Row(Modifier.weight(1f)) {
+                    // The left page is a list of amounts and the right one is prose,
+                    // so the gutter does not sit in the middle.
+                    LazyColumn(
+                        modifier = Modifier
+                            .weight(0.42f)
+                            .fillMaxHeight()
+                            .padding(end = 16.dp),
+                        contentPadding = PaddingValues(top = 14.dp, bottom = bottom + 24.dp),
+                    ) {
+                        // Times, yield and the site's own tags belong with the
+                        // amounts, and they keep the heading above short.
+                        item(key = "tags") {
+                            tagRow()
+                            Spacer(Modifier.height(16.dp))
+                        }
+                        if (recipe.quality == ParseQuality.LINK_ONLY) {
+                            item(key = "unread") {
+                                unreadCard()
+                                Spacer(Modifier.height(24.dp))
+                            }
+                        }
+                        ingredientsPage()
+                    }
+                    VerticalDivider(color = MaterialTheme.colorScheme.outline)
+                    LazyColumn(
+                        modifier = Modifier
+                            .weight(0.58f)
+                            .fillMaxHeight()
+                            .padding(start = 16.dp),
+                        contentPadding = PaddingValues(top = 14.dp, bottom = bottom + 24.dp),
+                    ) {
+                        // The headnote is prose, so it reads over the method rather
+                        // than over the shopping list.
+                        if (!recipe.description.isNullOrBlank()) {
+                            item(key = "headnote") {
+                                headnote()
+                                Spacer(Modifier.height(18.dp))
+                            }
+                        }
+                        methodPage()
+                        notesPage()
+                    }
                 }
-            },
-            containerColor = MaterialTheme.colorScheme.surface,
+            }
+        } else {
+            Box(Modifier.fillMaxSize()) {
+                LazyColumn(
+                    state = listState,
+                    contentPadding = PaddingValues(
+                        start = 20.dp,
+                        end = 20.dp,
+                        top = contentPadding.calculateTopPadding(),
+                        bottom = bottom + 48.dp,
+                    ),
+                ) {
+                    item(key = "bar") { bar() }
+
+                    if (recipe.imageFile != null) {
+                        item(key = "image") {
+                            val open = stringResource(R.string.recipe_picture_open)
+                            RecipeImage(
+                                fileName = recipe.imageFile,
+                                title = recipe.title,
+                                corner = 10.dp,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .aspectRatio(16f / 10f)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .clickable(onClickLabel = open) { fullScreen = recipe.imageFile },
+                            )
+                            Spacer(Modifier.height(20.dp))
+                        }
+                    }
+
+                    item(key = "head") {
+                        Text(title, style = MaterialTheme.typography.displaySmall)
+                        Spacer(Modifier.height(8.dp))
+                        byline()
+                        if (!recipe.description.isNullOrBlank()) {
+                            Spacer(Modifier.height(12.dp))
+                            headnote()
+                        }
+                        Spacer(Modifier.height(14.dp))
+                        tagRow()
+                        Spacer(Modifier.height(20.dp))
+                    }
+
+                    if (recipe.quality == ParseQuality.LINK_ONLY) {
+                        item(key = "unread") {
+                            unreadCard()
+                            Spacer(Modifier.height(24.dp))
+                        }
+                    }
+
+                    ingredientsPage()
+                    methodPage()
+                    notesPage()
+                }
+
+                // Ingredients within reach while you are in the method. Small, in the
+                // corner, and gone again the moment you scroll back up. On two pages
+                // they are never out of sight, so it has nothing to offer there.
+                AnimatedVisibility(
+                    visible = inMethod && recipe.ingredients.isNotEmpty(),
+                    enter = fadeIn(),
+                    exit = fadeOut(),
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(end = 20.dp, bottom = bottom + 16.dp),
+                ) {
+                    IngredientsPill(onClick = { sheetOpen = true })
+                }
+            }
+        }
+    }
+
+    if (sheetOpen) {
+        IngredientsSheet(
+            recipe = recipe,
+            servings = servings ?: recipe.servings,
+            factor = factor,
+            onToggle = tickIngredient,
+            onDismiss = { sheetOpen = false },
         )
     }
+    if (madeItOpen) {
+        MadeItDialog(
+            onConfirm = { madeItOpen = false; onMadeIt(it) },
+            onDismiss = { madeItOpen = false },
+        )
+    }
+    if (confirmRefetch) {
+        RefetchEditedDialog(
+            onConfirm = { confirmRefetch = false; onRefresh() },
+            onDismiss = { confirmRefetch = false },
+        )
+    }
+    fullScreen?.let { FullScreenPicture(it) { fullScreen = null } }
 }
+
+/** One entry in the overflow menu. A list, so a new entry is one line to add. */
+private data class MenuEntry(
+    val label: String,
+    val icon: ImageVector?,
+    val enabled: Boolean = true,
+    val onClick: () -> Unit,
+)
 
 @Composable
 private fun DetailBar(
@@ -291,6 +587,8 @@ private fun DetailBar(
     onEdit: () -> Unit,
     onToggleFavourite: () -> Unit,
     onRefresh: () -> Unit,
+    onCopyIngredients: () -> Unit,
+    onMadeIt: () -> Unit,
     onDelete: () -> Unit,
 ) {
     Row(
@@ -321,38 +619,111 @@ private fun DetailBar(
             Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.action_edit))
         }
         var menu by remember { mutableStateOf(false) }
+        val context = LocalContext.current
+        val images = LocalImageStore.current
+        val scope = rememberCoroutineScope()
+        val entries = buildList {
+            if (recipe.sourceUrl != null) add(
+                MenuEntry(
+                    label = stringResource(if (busy) R.string.recipe_refreshing else R.string.recipe_refresh),
+                    icon = Icons.Default.Refresh,
+                    enabled = !busy,
+                    onClick = onRefresh,
+                ),
+            )
+            if (recipe.ingredients.isNotEmpty()) add(
+                MenuEntry(
+                    label = stringResource(R.string.recipe_copy_ingredients),
+                    icon = Icons.AutoMirrored.Filled.List,
+                    onClick = onCopyIngredients,
+                ),
+            )
+            add(MenuEntry(stringResource(R.string.recipe_made_it), Icons.Outlined.Done, onClick = onMadeIt))
+            // Three ways out of the app: to whoever you talk to, to another Kookboek,
+            // and onto paper. See ui/Sharing.kt and ui/PrintRecipe.kt.
+            add(MenuEntry(stringResource(R.string.share_as_text), Icons.Outlined.Share) {
+                context.shareRecipeText(listOf(recipe))
+            })
+            add(MenuEntry(stringResource(R.string.share_as_file), Icons.AutoMirrored.Outlined.Send) {
+                // Writing the zip is real work, so it waits for a scope rather than
+                // holding up the menu closing.
+                scope.launch { images?.let { context.shareRecipeFile(listOf(recipe), it) } }
+            })
+            add(MenuEntry(stringResource(R.string.share_print), PrintIcon) { context.printRecipe(recipe, images) })
+            add(MenuEntry(stringResource(R.string.action_delete), Icons.Outlined.Delete, onClick = onDelete))
+        }
         Box {
             IconButton(onClick = { menu = true }) {
                 Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.action_more))
             }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                if (recipe.sourceUrl != null) {
+                entries.forEach { entry ->
                     DropdownMenuItem(
-                        text = {
-                            Text(
-                                stringResource(
-                                    if (busy) R.string.recipe_refreshing
-                                    else R.string.recipe_refresh
-                                )
-                            )
-                        },
-                        enabled = !busy,
-                        leadingIcon = { Icon(Icons.Default.Refresh, contentDescription = null) },
-                        onClick = { menu = false; onRefresh() },
+                        text = { Text(entry.label) },
+                        enabled = entry.enabled,
+                        leadingIcon = entry.icon?.let { { Icon(it, contentDescription = null) } },
+                        onClick = { menu = false; entry.onClick() },
                     )
                 }
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.action_delete)) },
-                    leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
-                    onClick = { menu = false; onDelete() },
-                )
             }
         }
     }
 }
 
+/**
+ * Author and site on one muted line. The site name is a tap away from every recipe
+ * off that site; a video link, when the page had one, sits at the end.
+ */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun SectionHeader(title: String, action: Pair<String, () -> Unit>? = null) {
+private fun Byline(recipe: Recipe, onSearch: (String) -> Unit, onWatch: (String) -> Unit) {
+    val site = recipe.siteName?.takeIf { it.isNotBlank() }
+    // Sites that publish themselves as the author give "24Kitchen · 24Kitchen".
+    val author = recipe.author?.takeIf { it.isNotBlank() && !it.equals(site, ignoreCase = true) }
+    val video = recipe.videoUrl?.takeIf { it.isNotBlank() }
+    if (site == null && author == null && video == null) return
+
+    val style = MaterialTheme.typography.bodySmall
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    FlowRow(verticalArrangement = Arrangement.Center) {
+        var first = true
+        @Composable
+        fun dot() {
+            if (!first) Text(" · ", style = style, color = muted)
+            first = false
+        }
+        author?.let { dot(); Text(it, style = style, color = muted) }
+        site?.let {
+            dot()
+            val label = stringResource(R.string.recipe_search_for, it)
+            Text(
+                it,
+                style = style,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.clickable(onClickLabel = label, role = Role.Button) { onSearch(it) },
+            )
+        }
+        video?.let {
+            dot()
+            Text(
+                stringResource(R.string.recipe_watch_video),
+                style = style,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.clickable(role = Role.Button) { onWatch(it) },
+            )
+        }
+    }
+}
+
+/** A button in a section header. With an [icon] it is an icon button labelled for a screen reader; without, plain text. */
+private data class HeaderAction(
+    val label: String,
+    val icon: ImageVector? = null,
+    val onClick: () -> Unit,
+)
+
+@Composable
+private fun SectionHeader(title: String, actions: List<HeaderAction> = emptyList()) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -361,10 +732,41 @@ private fun SectionHeader(title: String, action: Pair<String, () -> Unit>? = nul
     ) {
         Text(title, style = MaterialTheme.typography.headlineSmall)
         Spacer(Modifier.weight(1f))
-        action?.let { (label, onClick) ->
-            TextButton(onClick = onClick) {
-                Text(label, style = MaterialTheme.typography.labelMedium)
+        actions.forEach { action ->
+            if (action.icon != null) {
+                IconButton(onClick = action.onClick) {
+                    Icon(action.icon, contentDescription = action.label)
+                }
+            } else {
+                TextButton(onClick = action.onClick) {
+                    Text(action.label, style = MaterialTheme.typography.labelMedium)
+                }
             }
+        }
+    }
+}
+
+@Composable
+private fun IngredientsPill(onClick: () -> Unit) {
+    Surface(
+        onClick = onClick,
+        shape = MaterialTheme.shapes.small,
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.controlOutline),
+        shadowElevation = 2.dp,
+    ) {
+        Row(
+            Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                Icons.AutoMirrored.Filled.List,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(18.dp),
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(stringResource(R.string.recipe_ingredients), style = MaterialTheme.typography.labelLarge)
         }
     }
 }
@@ -397,11 +799,11 @@ private fun ServingsStepper(base: Int, current: Int, onChange: (Int) -> Unit) {
             IconButton(
                 onClick = { onChange((current - 1).coerceAtLeast(1)) },
                 enabled = current > 1,
-                // The glyph is a typographic minus, which a screen reader reads as
-                // nothing at all — the label has to come from somewhere.
+                // The glyph is drawn, not typed, so a screen reader hears nothing from
+                // it — the label has to come from here.
                 modifier = Modifier.semantics { contentDescription = fewer },
             ) {
-                Text("–", style = MaterialTheme.typography.headlineSmall)
+                StepperGlyph(plus = false)
             }
             Text(
                 "$current",
@@ -410,55 +812,46 @@ private fun ServingsStepper(base: Int, current: Int, onChange: (Int) -> Unit) {
                 // but not at "Extra groot", and the text size multiplies with the
                 // system font scale on top of that.
                 modifier = Modifier.widthIn(min = 28.dp),
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                textAlign = TextAlign.Center,
             )
+            val more = stringResource(R.string.recipe_servings_more)
             IconButton(
                 onClick = { onChange((current + 1).coerceAtMost(99)) },
                 enabled = current < 99,
+                modifier = Modifier.semantics { contentDescription = more },
             ) {
-                Icon(
-                    Icons.Default.Add,
-                    contentDescription = stringResource(R.string.recipe_servings_more),
-                    modifier = Modifier.size(18.dp),
-                )
+                StepperGlyph(plus = true)
             }
         }
     }
 }
 
+/**
+ * A minus or plus the height of the digits beside it. Drawn rather than typed: a
+ * typographic minus is a third the size of the number and reads as a smudge from
+ * across the counter. The button around it stays 48dp.
+ */
 @Composable
-private fun CheckLine(text: String, checked: Boolean, onToggle: () -> Unit) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onToggle)
-            .padding(vertical = 2.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Checkbox(
-            checked = checked,
-            onCheckedChange = { onToggle() },
-            colors = CheckboxDefaults.colors(
-                checkedColor = MaterialTheme.colorScheme.primary,
-                // An empty tick box is a control you have to find with a wet hand, so
-                // it gets the muted ink rather than the hairline that edges the cards.
-                // The printed rule is deliberately quiet; this must not be.
-                uncheckedColor = MaterialTheme.colorScheme.onSurfaceVariant,
-            ),
-        )
-        Text(
-            text,
-            style = MaterialTheme.typography.bodyLarge,
-            textDecoration = if (checked) TextDecoration.LineThrough else null,
-            color = if (checked) MaterialTheme.colorScheme.onSurfaceVariant
-            else MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.padding(start = 2.dp, end = 4.dp),
-        )
+private fun StepperGlyph(plus: Boolean) {
+    // Digits stand roughly seven tenths of the font size tall.
+    val extent = with(LocalDensity.current) { MaterialTheme.typography.titleLarge.fontSize.toDp() } * 0.7f
+    val colour = LocalContentColor.current
+    Canvas(Modifier.size(extent)) {
+        val stroke = 2.dp.toPx()
+        val mid = size.height / 2
+        drawLine(colour, Offset(0f, mid), Offset(size.width, mid), stroke, StrokeCap.Round)
+        if (plus) drawLine(colour, Offset(size.width / 2, 0f), Offset(size.width / 2, size.height), stroke, StrokeCap.Round)
     }
 }
 
 @Composable
-private fun StepRow(number: Int, text: String, done: Boolean, onToggle: () -> Unit) {
+private fun StepRow(
+    number: Int,
+    text: String,
+    done: Boolean,
+    onToggle: () -> Unit,
+    onTimer: (seconds: Int) -> Unit,
+) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -500,24 +893,34 @@ private fun StepRow(number: Int, text: String, done: Boolean, onToggle: () -> Un
             }
         }
         Spacer(Modifier.width(14.dp))
-        Text(
-            text,
-            style = MaterialTheme.typography.bodyLarge,
-            color = if (done) MaterialTheme.colorScheme.onSurfaceVariant
-            else MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.padding(top = 2.dp),
-        )
+        // "20 minuten" in a step is a tap on a timer; the rest of the words select on a
+        // long press and tick the step on a short one.
+        SelectionContainer {
+            DurationText(
+                text = text,
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    color = if (done) MaterialTheme.colorScheme.onSurfaceVariant
+                    else MaterialTheme.colorScheme.onBackground,
+                ),
+                modifier = Modifier.padding(top = 2.dp),
+                onTimer = onTimer,
+            )
+        }
     }
 }
 
 @Composable
 private fun NotesField(notes: String, onNotes: (String) -> Unit) {
     var draft by remember(notes) { mutableStateOf(notes) }
+    var saved by remember { mutableStateOf(false) }
     // Notes save as you type, but only after you pause — no save button to forget.
     LaunchedEffect(draft) {
         if (draft != notes) {
-            kotlinx.coroutines.delay(600)
+            delay(600)
             onNotes(draft)
+            saved = true
+            delay(1800)
+            saved = false
         }
     }
     OutlinedTextField(
@@ -533,10 +936,36 @@ private fun NotesField(notes: String, onNotes: (String) -> Unit) {
         ),
         modifier = Modifier.fillMaxWidth(),
     )
+    // Reserved height, so the word appearing does not push the page around.
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .height(20.dp),
+        contentAlignment = Alignment.CenterEnd,
+    ) {
+        AnimatedVisibility(visible = saved, enter = fadeIn(), exit = fadeOut()) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Default.Check,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(14.dp),
+                )
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    stringResource(R.string.recipe_notes_saved),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun CouldNotRead(
+    recipe: Recipe,
     hasSource: Boolean,
     onOpen: () -> Unit,
     onRetry: () -> Unit,
@@ -563,7 +992,12 @@ private fun CouldNotRead(
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Spacer(Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            val context = LocalContext.current
+            // The page behind a failed import is kept in the cache, and it is the one
+            // thing that turns "this site does not work" into something that can be fixed.
+            val keptPage = remember(recipe.id) { context.hasKeptPage(recipe) }
+            // Flows: four buttons, one of them a whole sentence, never fit on one line.
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 if (hasSource) {
                     TextButton(onClick = onOpen) {
                         Text(stringResource(R.string.recipe_unread_open))
@@ -574,6 +1008,11 @@ private fun CouldNotRead(
                 }
                 TextButton(onClick = onWrite) {
                     Text(stringResource(R.string.recipe_unread_write))
+                }
+                if (keptPage) {
+                    TextButton(onClick = { context.sharePage(recipe) }) {
+                        Text(stringResource(R.string.share_help_site))
+                    }
                 }
             }
         }
@@ -590,6 +1029,6 @@ private fun KeepScreenOn() {
     }
 }
 
-private fun android.content.Context.openLink(url: String) {
+private fun Context.openLink(url: String) {
     runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
 }

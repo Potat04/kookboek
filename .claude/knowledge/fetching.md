@@ -28,9 +28,38 @@ koekje al bij het eerste antwoord, ruim voordat de controle klaar is, dus op een
 gebruikte cookiepot zegt het binnen een halve seconde "klaar". Mihon mag er wel op wachten, want
 dat is een OkHttp-interceptor zonder document voor zich. Wij hebben het document.
 
-`FetchResult` is `Page`, `Blocked` of `Unreachable`. `Blocked` wordt `FailureReason.BLOCKED`, en
-het scherm zegt dan dat de site de app tegenhield, met de raad de pagina eerst in je browser te
-openen en daarna opnieuw te delen.
+`FetchResult` is `Page`, `Blocked`, `TimedOut`, `Offline` of `Unreachable`, en elk wordt een eigen
+`FailureReason` met een eigen zin en een eigen volgende stap:
+
+| Uitkomst | Reden | Wat het scherm zegt |
+|---|---|---|
+| `Blocked` | `BLOCKED` | de site hield de app tegen; open de pagina eerst in je browser |
+| `TimedOut` | `TIMED_OUT` | de controle liep door tot de tijd op was; probeer het nog eens |
+| `Offline` | `OFFLINE` | de telefoon zit niet op een netwerk; verbind en deel opnieuw |
+| `Unreachable` | `FETCH_FAILED` | klopt de link? probeer het zo nog eens |
+
+`Offline` komt uit de exception (`UnknownHostException`, `ConnectException`) én uit
+`ConnectivityManager`, want een captive portal beantwoordt DNS prima en komt nergens.
+
+Daarnaast is er `NO_RECIPE_ON_PAGE`, en die komt niet van de fetcher maar van de parser: de pagina
+laadde en er stond geen recept op. Bij importeren blijft de link gewoon bewaard, met die zin
+eronder in de deel-sheet. Bij verversen wordt er níets overschreven: een leeg antwoord zou
+handgetypte regels wissen, dus zegt de app wat er aan de hand is en laat het recept staan.
+
+## Afbreken
+
+Elke import is te stoppen: de deel-sheet heeft een Annuleren onder de spinner, en de
+toevoeg-sheet in de app blijft daarvoor open staan zolang hij bezig is. `ShareActivity` bewaart de
+`Deferred` van `app.scope.async` en breekt die af; de ViewModel bewaart de `Job` van `importUrl`
+en heeft `cancelImport()`.
+
+Het Jsoup-verzoek loopt daarom in `runInterruptible`: een socket die in `read()` staat merkt een
+afgebroken coroutine niet uit zichzelf. De WebView-route was al afbreekbaar (`delay` en
+`suspendCancellableCoroutine`), en de `finally` die hem opruimt draait ook bij een cancel: eerst
+`about:blank` zodat de scripts van de controle stoppen, dan uit de view tree, dan `destroy()`.
+
+Er wordt niets bewaard en niets gezegd. Wie afbreekt weet wat hij deed, en de pagina staat nog
+gewoon open achter de sheet.
 
 `ChallengePage.isChallenge()` leest eerst de `cf-mitigated`-header, wat Cloudflare aanwijst als de
 manier om een controle van een gewone weigering te onderscheiden. Alleen de waarde `challenge`

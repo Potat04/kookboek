@@ -1,11 +1,14 @@
 package nl.potat04.kookboek.ui
 
+import android.content.ContentResolver
+import android.net.Uri
 import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -18,9 +21,12 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import nl.potat04.kookboek.KookboekApp
 import nl.potat04.kookboek.R
+import nl.potat04.kookboek.data.Backup
+import nl.potat04.kookboek.data.BackupError
 import nl.potat04.kookboek.data.ImportResult
 import nl.potat04.kookboek.data.Recipe
 import nl.potat04.kookboek.data.RecipeRepository
+import java.util.Locale
 
 enum class SortOrder(@param:StringRes val labelRes: Int) {
     NEWEST(R.string.sort_newest),
@@ -65,13 +71,22 @@ class KookboekViewModel(private val repo: RecipeRepository) : ViewModel() {
     private val _selection = MutableStateFlow<Set<String>>(emptySet())
     val selection: StateFlow<Set<String>> = _selection.asStateFlow()
 
+    /** The import running right now, so the reader can call it off. */
+    private var importJob: Job? = null
+
     private val toasts = Channel<Toast>(Channel.BUFFERED)
     val messages = toasts.receiveAsFlow()
 
     val all: StateFlow<List<Recipe>> = repo.recipes
 
+    /** Deleted and still recoverable, newest first. Emptied thirty days after the delete. */
+    val deleted: StateFlow<List<Recipe>> = repo.deleted
+
     /** True once the cookbook has been read off disk. */
     val loaded: StateFlow<Boolean> = repo.loaded
+
+    /** Stateless, so it is built here rather than threaded through the constructor. */
+    private val backup = Backup(repo)
 
     val visible: StateFlow<List<Recipe>> =
         combine(repo.recipes, _query, _favouritesOnly, _sort) { recipes, query, favourites, sort ->
@@ -149,7 +164,10 @@ class KookboekViewModel(private val repo: RecipeRepository) : ViewModel() {
                     UiText.Quantity(R.plurals.toast_deleted_many, chosen.size)
                 },
                 actionLabel = UiText.Res(R.string.action_undo),
-                undo = { viewModelScope.launch { chosen.forEach { repo.restore(it) } } },
+                // Clearing deletedAt rather than writing the copies back: the delete
+                // is soft now, so the rows never left, and one update per recipe
+                // cannot lose anything a rewrite might.
+                undo = { viewModelScope.launch { chosen.forEach { repo.restoreDeleted(it.id) } } },
             )
         )
     }
@@ -189,30 +207,98 @@ class KookboekViewModel(private val repo: RecipeRepository) : ViewModel() {
             Toast(
                 message = UiText.res(R.string.toast_deleted, recipe.titleText()),
                 actionLabel = UiText.Res(R.string.action_undo),
-                undo = { viewModelScope.launch { repo.restore(recipe) } },
+                // See deleteSelected: the soft delete left everything in place, so undo
+                // is clearing the stamp and not writing the recipe back over itself.
+                undo = { viewModelScope.launch { repo.restoreDeleted(recipe.id) } },
+            )
+        )
+    }
+
+    /** From the "recently deleted" screen: back into the cookbook, where it was. */
+    fun restoreDeleted(id: String) = viewModelScope.launch { repo.restoreDeleted(id) }
+
+    /** The one delete with no way back, so the screen asks first. */
+    fun deleteForever(id: String) = viewModelScope.launch { repo.deleteForever(id) }
+
+    /**
+     * Writes the whole cookbook to wherever the file picker pointed.
+     *
+     * The [ContentResolver] is a parameter and not a field: the ViewModel outlives the
+     * screen and has no business holding on to a Context.
+     */
+    fun exportTo(resolver: ContentResolver, uri: Uri) = viewModelScope.launch {
+        val count = runCatching {
+            val stream = resolver.openOutputStream(uri) ?: error("no output stream")
+            backup.write(stream)
+        }.getOrElse {
+            toasts.send(Toast(UiText.Res(R.string.backup_toast_export_failed)))
+            return@launch
+        }
+        toasts.send(Toast(UiText.Quantity(R.plurals.backup_toast_exported, count)))
+    }
+
+    /** Reads a backup back in and says what it changed. */
+    fun restoreFrom(resolver: ContentResolver, uri: Uri) = viewModelScope.launch {
+        val opened = runCatching { resolver.openInputStream(uri) ?: error("no input stream") }
+            .getOrElse {
+                toasts.send(Toast(UiText.Res(R.string.backup_toast_restore_failed)))
+                return@launch
+            }
+        val result = opened.use { backup.read(it) }
+        toasts.send(
+            Toast(
+                result.fold(
+                    onSuccess = {
+                        UiText.res(
+                            R.string.backup_toast_restored,
+                            it.added,
+                            it.updated,
+                            it.skipped,
+                        )
+                    },
+                    onFailure = { error ->
+                        UiText.Res(
+                            if (error is BackupError.NewerVersion) R.string.backup_toast_restore_newer
+                            else R.string.backup_toast_restore_failed
+                        )
+                    },
+                )
             )
         )
     }
 
     /** Used by the "paste a link" action inside the app. */
-    fun importUrl(url: String, onDone: (String?) -> Unit = {}) = viewModelScope.launch {
-        _busy.value = true
-        val result = repo.import(url)
-        _busy.value = false
-        when (result) {
-            is ImportResult.Saved -> {
-                toasts.send(Toast(describe(result.recipe)))
-                onDone(result.recipe.id)
-            }
-            is ImportResult.AlreadySaved -> {
-                toasts.send(Toast(UiText.Res(R.string.toast_already_saved)))
-                onDone(result.recipe.id)
-            }
-            is ImportResult.Failed -> {
-                toasts.send(Toast(result.reason.text()))
-                onDone(null)
+    fun importUrl(url: String, onDone: (String?) -> Unit = {}) {
+        importJob?.cancel()
+        importJob = viewModelScope.launch {
+            _busy.value = true
+            try {
+                when (val result = repo.import(url)) {
+                    is ImportResult.Saved -> {
+                        toasts.send(Toast(result.note?.text() ?: describe(result.recipe)))
+                        onDone(result.recipe.id)
+                    }
+                    is ImportResult.AlreadySaved -> {
+                        toasts.send(Toast(UiText.Res(R.string.toast_already_saved)))
+                        onDone(result.recipe.id)
+                    }
+                    is ImportResult.Failed -> {
+                        toasts.send(Toast(result.reason.text()))
+                        onDone(null)
+                    }
+                }
+            } finally {
+                // Also on the way out through a cancellation, or the library would sit
+                // there spinning over an import nobody is doing any more.
+                _busy.value = false
             }
         }
+    }
+
+    /** Drops a running import. Nothing is saved and nothing is said about it. */
+    fun cancelImport() {
+        importJob?.cancel()
+        importJob = null
     }
 
     fun refresh(recipe: Recipe) = viewModelScope.launch {
@@ -244,6 +330,34 @@ class KookboekViewModel(private val repo: RecipeRepository) : ViewModel() {
     /** Pages that gave no title at all still have to be named in a snackbar. */
     private fun Recipe.titleText(): UiText =
         if (title.isBlank()) UiText.Res(R.string.recipe_untitled) else UiText.Raw(title)
+
+    // --- recipe screen
+
+    /** First open only; the repository ignores the call once a date is set. */
+    fun markOpened(recipe: Recipe) = viewModelScope.launch { repo.markOpened(recipe.id) }
+
+    /**
+     * Where the stepper was left. Stored as null when it matches the page's own
+     * number, so a refetch that changes the servings does not leave a stale override.
+     */
+    fun setCookedServings(recipe: Recipe, servings: Int) = viewModelScope.launch {
+        repo.update(recipe.id) { it.copy(cookedServings = servings.takeIf { n -> n != it.servings }) }
+    }
+
+    /** Stamps today and, when a line was left, pencils it into the notes with the date. */
+    fun markCooked(recipe: Recipe, note: String?) = viewModelScope.launch {
+        val now = System.currentTimeMillis()
+        repo.update(recipe.id) {
+            it.copy(
+                lastCookedAt = now,
+                notes = CookedNote.append(it.notes, note, now, Locale.getDefault()),
+            )
+        }
+        toasts.send(Toast(UiText.Res(R.string.recipe_made_toast)))
+    }
+
+    /** A plain snackbar from a screen that has something to say but nothing to undo. */
+    fun notify(message: UiText) = viewModelScope.launch { toasts.send(Toast(message)) }
 
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {

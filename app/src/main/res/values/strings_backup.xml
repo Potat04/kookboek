@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Export, restore, the daily backup and the bin. English is the unqualified file and
+  therefore the fallback for every language the app does not have.
+-->
+<resources>
+
+    <string name="backup_feel">Vibration</string>
+    <string name="backup_haptics">Buzz when you tick a line off</string>
+    <string name="backup_haptics_body">A short tap under your finger, so you can feel that it landed.</string>
+
+    <string name="backup_section">Your cookbook</string>
+
+    <string name="backup_export">Export cookbook</string>
+    <string name="backup_export_body">One file with every recipe and its photos. Put it wherever you like.</string>
+    <string name="backup_restore">Restore from a file</string>
+    <string name="backup_restore_body">Reads such a file back in. A recipe you already have is only replaced by a newer copy.</string>
+
+    <string name="backup_auto">Back up every day</string>
+    <string name="backup_auto_body">Writes today\'s file to the folder below and keeps the last seven.</string>
+    <string name="backup_folder_none">No folder chosen yet</string>
+    <string name="backup_folder_pick">Choose a folder</string>
+    <string name="backup_folder_change">Change</string>
+    <string name="backup_folder_lost">That folder can\'t be reached any more. Choose it again.</string>
+    <string name="backup_last">Last backup: %s</string>
+    <string name="backup_last_never">No backup yet</string>
+
+    <string name="backup_deleted">Recently deleted</string>
+    <string name="backup_deleted_body">Deleted recipes wait here for thirty days.</string>
+    <string name="backup_deleted_empty">Nothing in here</string>
+    <string name="backup_deleted_empty_body">A recipe you delete waits thirty days before it goes for good, photo and all.</string>
+    <string name="backup_deleted_on">Deleted on %s</string>
+    <string name="backup_deleted_restore">Put back</string>
+    <string name="backup_deleted_forever">Delete for good</string>
+    <string name="backup_deleted_forever_title">Delete for good?</string>
+    <string name="backup_deleted_forever_body">\'%s\' goes for good, photo and all. This is the one you can\'t undo.</string>
+
+    <plurals name="backup_toast_exported">
+        <item quantity="one">%d recipe exported</item>
+        <item quantity="other">%d recipes exported</item>
+    </plurals>
+    <string name="backup_toast_export_failed">Could not write that file</string>
+    <string name="backup_toast_restored">%1$d added, %2$d updated, %3$d left alone</string>
+    <string name="backup_toast_restore_failed">That is not a Kookboek backup</string>
+    <string name="backup_toast_restore_newer">That backup comes from a newer Kookboek</string>
+
+    <string name="backup_sample_ingredient">200 g plain flour</string>
+
+</resources>

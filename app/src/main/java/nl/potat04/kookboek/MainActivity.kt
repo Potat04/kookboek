@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.activity.compose.BackHandler
@@ -32,6 +33,8 @@ import androidx.navigation.compose.rememberNavController
 import nl.potat04.kookboek.data.Recipe
 import nl.potat04.kookboek.data.SettingsStore
 import nl.potat04.kookboek.ui.AddRecipeSheet
+import nl.potat04.kookboek.ui.CookScreen
+import nl.potat04.kookboek.ui.DeletedScreen
 import nl.potat04.kookboek.ui.EditScreen
 import nl.potat04.kookboek.ui.KookboekViewModel
 import nl.potat04.kookboek.ui.LibraryScreen
@@ -39,6 +42,8 @@ import nl.potat04.kookboek.ui.ChallengeOverlay
 import nl.potat04.kookboek.ui.ProvideImageStore
 import nl.potat04.kookboek.ui.RecipeScreen
 import nl.potat04.kookboek.ui.SettingsScreen
+import nl.potat04.kookboek.ui.UpdateHost
+import nl.potat04.kookboek.ui.UpdateSettings
 import nl.potat04.kookboek.ui.resolve
 import nl.potat04.kookboek.ui.setAppLanguage
 import nl.potat04.kookboek.ui.theme.KookboekTheme
@@ -91,13 +96,20 @@ private fun Kookboek(vm: KookboekViewModel, store: SettingsStore, openRecipe: St
         }
     }
 
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbars) },
-        containerColor = Color.Transparent,
-        contentColor = MaterialTheme.colorScheme.onBackground,
-        modifier = Modifier.fillMaxSize(),
-    ) { padding ->
-        KookboekNavHost(nav, vm, store, padding)
+    val updates = (context.applicationContext as KookboekApp).updates
+    UpdateHost(updates) { updateState, openUpdates ->
+        Scaffold(
+            snackbarHost = { SnackbarHost(snackbars) },
+            containerColor = Color.Transparent,
+            contentColor = MaterialTheme.colorScheme.onBackground,
+            // Keep scrolling content and controls outside the system navigation buttons.
+            // This consumes the inset so Scaffold does not add the same spacing again.
+            modifier = Modifier.fillMaxSize().navigationBarsPadding(),
+        ) { padding ->
+            KookboekNavHost(nav, vm, store, padding) {
+                if (updates.enabled) UpdateSettings(updateState, openUpdates)
+            }
+        }
     }
 }
 
@@ -107,6 +119,7 @@ private fun KookboekNavHost(
     vm: KookboekViewModel,
     store: SettingsStore,
     padding: PaddingValues,
+    updateContent: @Composable () -> Unit,
 ) {
     val all by vm.all.collectAsStateWithLifecycle()
     val visible by vm.visible.collectAsStateWithLifecycle()
@@ -116,6 +129,7 @@ private fun KookboekNavHost(
     val busy by vm.busy.collectAsStateWithLifecycle()
     val selection by vm.selection.collectAsStateWithLifecycle()
     val loaded by vm.loaded.collectAsStateWithLifecycle()
+    val settings by store.settings.collectAsStateWithLifecycle()
 
     // Recipes created by "write it yourself" only hit disk once you save them.
     var draft by remember { mutableStateOf<Recipe?>(null) }
@@ -153,9 +167,17 @@ private fun KookboekNavHost(
                 AddRecipeSheet(
                     busy = busy,
                     onDismiss = { addOpen = false },
+                    // The sheet stays up while the page is being fetched, because that
+                    // is where the Cancel button lives.
                     onImport = { url ->
+                        vm.importUrl(url) { id ->
+                            addOpen = false
+                            id?.let { nav.navigate("recipe/$it") }
+                        }
+                    },
+                    onCancel = {
+                        vm.cancelImport()
                         addOpen = false
-                        vm.importUrl(url) { id -> id?.let { nav.navigate("recipe/$it") } }
                     },
                     onWriteOwn = {
                         addOpen = false
@@ -178,6 +200,7 @@ private fun KookboekNavHost(
                     busy = busy,
                     onBack = { nav.popBackStack() },
                     onEdit = { nav.navigate("edit/${recipe.id}") },
+                    onCook = { nav.navigate("cook/${recipe.id}") },
                     onToggleFavourite = { vm.toggleFavourite(recipe) },
                     onToggleIngredient = { vm.toggleIngredient(recipe, it) },
                     onToggleStep = { vm.toggleStep(recipe, it) },
@@ -188,6 +211,35 @@ private fun KookboekNavHost(
                     // disappearing and walks back — one place decides, so we cannot
                     // pop twice and empty the whole back stack.
                     onDelete = { vm.delete(recipe) },
+                    // A tag or a site name becomes the library's search.
+                    onSearch = { text ->
+                        vm.setQuery(text)
+                        nav.popBackStack("library", inclusive = false)
+                    },
+                    onServings = { vm.setCookedServings(recipe, it) },
+                    onMadeIt = { vm.markCooked(recipe, it) },
+                    onNotify = vm::notify,
+                    onOpened = { vm.markOpened(recipe) },
+                    haptics = settings.hapticFeedback,
+                    contentPadding = padding,
+                )
+            }
+        }
+
+        composable("cook/{id}") { entry ->
+            val id = entry.arguments?.getString("id")
+            val recipe = all.firstOrNull { it.id == id }
+            if (recipe == null) {
+                LeaveWhenGone(entry, nav, id, loaded)
+            } else {
+                CookScreen(
+                    recipe = recipe,
+                    // Back and the close control do the same thing: land on the recipe
+                    // screen, at the recipe you were cooking.
+                    onClose = { nav.popBackStack() },
+                    onToggleStep = { vm.toggleStep(recipe, it) },
+                    onToggleIngredient = { vm.toggleIngredient(recipe, it) },
+                    onNotify = vm::notify,
                     contentPadding = padding,
                 )
             }
@@ -204,6 +256,25 @@ private fun KookboekNavHost(
                 // Handing the language to the platform restarts this activity; the
                 // navigation back stack is restored, so we come back here.
                 onLanguage = context::setAppLanguage,
+                onHaptics = store::setHapticFeedback,
+                onAutoBackup = store::setAutoBackup,
+                // KookboekApp watches this and re-schedules the daily job.
+                onBackupFolder = store::setBackupFolder,
+                onExport = { vm.exportTo(context.contentResolver, it) },
+                onRestore = { vm.restoreFrom(context.contentResolver, it) },
+                onDeleted = { nav.navigate("deleted") },
+                updateContent = updateContent,
+                onBack = { nav.popBackStack() },
+                contentPadding = padding,
+            )
+        }
+
+        composable("deleted") {
+            val binned by vm.deleted.collectAsStateWithLifecycle()
+            DeletedScreen(
+                recipes = binned,
+                onRestore = vm::restoreDeleted,
+                onDeleteForever = vm::deleteForever,
                 onBack = { nav.popBackStack() },
                 contentPadding = padding,
             )

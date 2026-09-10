@@ -45,6 +45,7 @@ fun AddRecipeSheet(
     busy: Boolean,
     onDismiss: () -> Unit,
     onImport: (String) -> Unit,
+    onCancel: () -> Unit,
     onWriteOwn: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -96,7 +97,16 @@ fun AddRecipeSheet(
             Spacer(Modifier.height(12.dp))
 
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedButton(onClick = { context.clipboardText()?.let { url = it } }) {
+                OutlinedButton(
+                    enabled = !busy,
+                    onClick = {
+                        val pasted = context.clipboardText() ?: return@OutlinedButton
+                        url = pasted
+                        // Pasting a link says what you want done with it. One tap fewer,
+                        // and anything that is not a link still just lands in the field.
+                        if (normalizeUrl(pasted) != null) onImport(pasted)
+                    },
+                ) {
                     Text(stringResource(R.string.add_paste))
                 }
                 Button(
@@ -119,7 +129,11 @@ fun AddRecipeSheet(
             }
 
             Spacer(Modifier.height(14.dp))
-            TextButton(onClick = onWriteOwn) { Text(stringResource(R.string.add_write_own)) }
+            if (busy) {
+                TextButton(onClick = onCancel) { Text(stringResource(R.string.action_cancel)) }
+            } else {
+                TextButton(onClick = onWriteOwn) { Text(stringResource(R.string.add_write_own)) }
+            }
         }
     }
 }

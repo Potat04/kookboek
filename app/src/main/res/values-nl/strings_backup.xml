@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Exporteren, terugzetten, de dagelijkse back-up en de prullenbak. Sleutel voor sleutel
+  gelijk aan values/strings_backup.xml; StringResourcesTest controleert dat.
+-->
+<resources>
+
+    <string name="backup_feel">Trillen</string>
+    <string name="backup_haptics">Trilt kort als je een regel afvinkt</string>
+    <string name="backup_haptics_body">Een tikje onder je vinger, zodat je voelt dat het aankwam.</string>
+
+    <string name="backup_section">Je kookboek</string>
+
+    <string name="backup_export">Kookboek exporteren</string>
+    <string name="backup_export_body">Eén bestand met alle recepten en hun foto\'s. Zet het waar je wilt.</string>
+    <string name="backup_restore">Terugzetten uit een bestand</string>
+    <string name="backup_restore_body">Leest zo\'n bestand weer in. Een recept dat je al hebt wordt alleen vervangen door een nieuwere versie.</string>
+
+    <string name="backup_auto">Elke dag een back-up</string>
+    <string name="backup_auto_body">Schrijft het bestand van vandaag naar de map hieronder en bewaart de laatste zeven.</string>
+    <string name="backup_folder_none">Nog geen map gekozen</string>
+    <string name="backup_folder_pick">Kies een map</string>
+    <string name="backup_folder_change">Wijzigen</string>
+    <string name="backup_folder_lost">Die map is niet meer bereikbaar. Kies hem opnieuw.</string>
+    <string name="backup_last">Laatste back-up: %s</string>
+    <string name="backup_last_never">Nog geen back-up</string>
+
+    <string name="backup_deleted">Onlangs verwijderd</string>
+    <string name="backup_deleted_body">Verwijderde recepten wachten hier dertig dagen.</string>
+    <string name="backup_deleted_empty">Hier staat niets</string>
+    <string name="backup_deleted_empty_body">Een recept dat je verwijdert wacht dertig dagen voordat het echt weggaat, foto en al.</string>
+    <string name="backup_deleted_on">Verwijderd op %s</string>
+    <string name="backup_deleted_restore">Terugzetten</string>
+    <string name="backup_deleted_forever">Definitief verwijderen</string>
+    <string name="backup_deleted_forever_title">Definitief verwijderen?</string>
+    <string name="backup_deleted_forever_body">\'%s\' gaat echt weg, foto en al. Dit is de enige die je niet ongedaan maakt.</string>
+
+    <plurals name="backup_toast_exported">
+        <item quantity="one">%d recept geëxporteerd</item>
+        <item quantity="other">%d recepten geëxporteerd</item>
+    </plurals>
+    <string name="backup_toast_export_failed">Kon dat bestand niet schrijven</string>
+    <string name="backup_toast_restored">%1$d nieuw, %2$d bijgewerkt, %3$d ongemoeid</string>
+    <string name="backup_toast_restore_failed">Dat is geen Kookboek-back-up</string>
+    <string name="backup_toast_restore_newer">Die back-up komt uit een nieuwere Kookboek</string>
+
+    <string name="backup_sample_ingredient">200 g bloem</string>
+
+</resources>

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The editor: photos, the recipe card, headings -->
+    <string name="edit_photo_label">Photo</string>
+    <string name="edit_photo_choose">Choose photo</string>
+    <string name="edit_photo_replace">Choose another</string>
+    <string name="edit_photo_remove">Remove</string>
+    <string name="edit_photo_failed">Could not read that picture</string>
+    <string name="edit_card_label">Photo of the recipe card</string>
+    <string name="edit_card_choose">Add a photo</string>
+    <string name="edit_add_heading">Add heading</string>
+
+    <!-- Shown before saving throws the ticks away, and only then -->
+    <string name="edit_ticks_title">The ticks go</string>
+    <string name="edit_ticks_body">You changed the lists, and a tick is kept by its place in them. Save and the ticked ingredients and steps come back empty.</string>
+
+    <!-- Why an import came back with less than a recipe -->
+    <string name="edit_error_offline">Your phone is not on a network. Reconnect and share the page again.</string>
+    <string name="edit_error_timed_out">The site kept checking until the time ran out. Try again, or open the page in your browser first.</string>
+    <string name="edit_error_no_recipe">There is no recipe on that page — only the link was kept. Look for a page with the recipe itself on it.</string>
+</resources>

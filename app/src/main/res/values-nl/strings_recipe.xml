@@ -1,0 +1,35 @@
+<resources>
+    <!-- Het receptscherm, tweede feature-ronde. Engels in res/values/strings_recipe.xml. -->
+
+    <string name="recipe_time_prep_cook">%1$s voorbereiden, %2$s koken</string>
+
+    <string name="recipe_last_made">Laatst gemaakt op %s</string>
+    <string name="recipe_made_it">Gemaakt</string>
+    <string name="recipe_made_hint">Een regel voor de volgende keer, als je wilt</string>
+    <string name="recipe_made_toast">Vandaag gemaakt, genoteerd</string>
+
+    <string name="recipe_watch_video">Bekijk de video</string>
+    <string name="recipe_search_for">Zoek op %s</string>
+
+    <string name="recipe_refetch_edited_title">Je aanpassingen vervangen?</string>
+    <string name="recipe_refetch_edited_body">Je hebt de ingrediënten of stappen zelf aangepast. Opnieuw ophalen zet terug wat de pagina nu zegt. Je notities blijven staan.</string>
+    <string name="recipe_refetch_anyway">Toch ophalen</string>
+
+    <string name="recipe_no_clock">Kan geen timer starten in de klok-app</string>
+
+    <string name="recipe_copy_ingredients">Ingrediënten kopiëren</string>
+    <string name="recipe_copied">Ingrediënten gekopieerd</string>
+
+    <string name="recipe_fold_ticked">Afgevinkte verbergen</string>
+    <string name="recipe_unfold_ticked">Alles tonen</string>
+    <plurals name="recipe_gathered">
+        <item quantity="one">%d klaargezet</item>
+        <item quantity="other">%d klaargezet</item>
+    </plurals>
+
+    <string name="recipe_picture_open">Foto op volledig scherm</string>
+    <string name="recipe_picture_close">Foto sluiten</string>
+    <string name="recipe_attachment">Gefotografeerd recept</string>
+
+    <string name="recipe_notes_saved">Bewaard</string>
+</resources>

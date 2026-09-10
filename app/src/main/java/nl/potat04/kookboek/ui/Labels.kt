@@ -2,8 +2,12 @@ package nl.potat04.kookboek.ui
 
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import java.text.DateFormat
+import java.util.Date
+import java.util.Locale
 import nl.potat04.kookboek.R
 import nl.potat04.kookboek.data.FailureReason
 import nl.potat04.kookboek.data.Recipe
@@ -22,13 +26,41 @@ import nl.potat04.kookboek.parse.Scaling
 
 @Composable
 fun Recipe.timeText(): String? {
-    val minutes = totalMinutes ?: return null
+    // A page that gives prep and cooking time but no total still has a total.
+    val minutes = totalMinutes
+        ?: listOfNotNull(prepMinutes, cookMinutes).takeIf { it.isNotEmpty() }?.sum()
+        ?: return null
     if (minutes <= 0) return null
-    return when {
-        minutes < 60 -> stringResource(R.string.recipe_time_minutes, minutes)
-        minutes % 60 == 0 -> stringResource(R.string.recipe_time_hours, minutes / 60)
-        else -> stringResource(R.string.recipe_time_hours_minutes, minutes / 60, minutes % 60)
-    }
+    return minutesText(minutes)
+}
+
+/**
+ * The recipe screen's version of [timeText]: "15 min prep, 40 min cooking" when the
+ * page gave both, so you know whether the hour is yours or the oven's. The library
+ * card keeps the total; it has one line and "15 stuks" to fit on it.
+ */
+@Composable
+fun Recipe.timeDetailText(): String? {
+    val prep = prepMinutes?.takeIf { it > 0 }
+    val cook = cookMinutes?.takeIf { it > 0 }
+    if (prep == null || cook == null) return timeText()
+    return stringResource(R.string.recipe_time_prep_cook, minutesText(prep), minutesText(cook))
+}
+
+@Composable
+private fun minutesText(minutes: Int): String = when {
+    minutes < 60 -> stringResource(R.string.recipe_time_minutes, minutes)
+    minutes % 60 == 0 -> stringResource(R.string.recipe_time_hours, minutes / 60)
+    else -> stringResource(R.string.recipe_time_hours_minutes, minutes / 60, minutes % 60)
+}
+
+/** "Laatst gemaakt op 10 sep. 2026", in the phone's medium date format. Null until the first "Made it". */
+@Composable
+fun Recipe.lastMadeText(): String? {
+    val at = lastCookedAt ?: return null
+    val locale = LocalConfiguration.current.locales[0] ?: Locale.getDefault()
+    val date = DateFormat.getDateInstance(DateFormat.MEDIUM, locale).format(Date(at))
+    return stringResource(R.string.recipe_last_made, date)
 }
 
 /**
@@ -75,12 +107,20 @@ val TextSize.labelRes: Int
         TextSize.HUGE -> R.string.settings_text_huge
     }
 
-/** Why an import came back empty-handed, said out loud. */
+/**
+ * Why an import came back empty-handed, said out loud.
+ *
+ * Every one of these names what to do next, because "could not fetch the page" leaves
+ * the reader guessing whether to wait, retry, or go and open the page themselves.
+ */
 fun FailureReason.text(): UiText = UiText.Res(
     when (this) {
         FailureReason.NO_VALID_LINK -> R.string.error_no_valid_link
+        FailureReason.OFFLINE -> R.string.edit_error_offline
         FailureReason.FETCH_FAILED -> R.string.error_fetch_failed
         FailureReason.BLOCKED -> R.string.error_blocked
+        FailureReason.TIMED_OUT -> R.string.edit_error_timed_out
+        FailureReason.NO_RECIPE_ON_PAGE -> R.string.edit_error_no_recipe
         FailureReason.NO_SOURCE_URL -> R.string.error_no_source_url
         FailureReason.NOTHING_SHARED -> R.string.error_nothing_shared
     }

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="cook_open">Cook</string>
+    <string name="cook_counter">%1$d / %2$d</string>
+    <string name="cook_hint">Tap the right for the next step, the left to go back</string>
+    <string name="cook_next_step">Next step</string>
+    <string name="cook_previous_step">Previous step</string>
+    <string name="cook_step_done">Step done</string>
+    <string name="cook_timer_started">Timer set</string>
+    <string name="cook_timer_unavailable">Could not start a timer in the clock app</string>
+</resources>

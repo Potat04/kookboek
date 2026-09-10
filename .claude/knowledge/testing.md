@@ -4,7 +4,7 @@
 ./gradlew :app:testDebugUnitTest
 ```
 
-Vijf testklassen, allemaal zonder Android-runtime:
+De testklassen, allemaal zonder Android-runtime:
 
 - `RecipeParserTest` draait de parser tegen echte, opgeslagen pagina's.
 - `ChallengePageTest` doet hetzelfde voor de botcontrole-herkenning, tegen twee bewaarde
@@ -12,16 +12,25 @@ Vijf testklassen, allemaal zonder Android-runtime:
 - `LauncherIconTest` leest de manifest: elk palet een alias, precies één aan, allemaal naar de
   router. Zie [ui.md](ui.md).
 - `ScalingTest` rekent porties om.
+- `DurationsTest` zoekt tijdsduren in stappen ("25 minuten", "1 hour 20 minutes"), eerst in de
+  stappen van de echte fixtures en dan in een lijst losse zinnen.
+- `RecipeJsonTest` laat een recept heen en terug door het uitwisselformaat gaan en controleert
+  dat een bestand met een hogere `version` netjes geweigerd wordt.
 - `StringResourcesTest` legt `values/` (Engels, de fallback) en `values-nl/` naast elkaar: dezelfde
   sleutels, hetzelfde soort, dezelfde meervoudsvormen, dezelfde placeholders. Die laatste is de
-  enige die écht crasht op een toestel, en geen compiler ziet hem.
+  enige die écht crasht op een toestel, en geen compiler ziet hem. Leest elk xml-bestand in de
+  map, dus ook `strings_<feature>.xml`, en faalt op een sleutel die twee keer voorkomt.
 
 ## Fixtures
 
 `app/src/test/resources/fixtures/` bevat opgeslagen pagina's van leukerecepten.nl, cheffatty.com,
-24kitchen.nl, bbcgoodfood.com en één pagina die helemaal geen receptdata prijsgeeft (ah.nl, die
-een botblokkade teruggeeft). De test controleert dat de app daar alsnog netjes iets
-bruikbaars van maakt.
+24kitchen.nl, bbcgoodfood.com, uitpaulineskeuken.nl, laurasbakery.nl en cookieandkate.com, en
+één pagina die helemaal geen receptdata prijsgeeft (ah.nl, die een botblokkade teruggeeft). De
+test controleert dat de app daar alsnog netjes iets bruikbaars van maakt.
+
+De laatste twee staan er om de ingrediëntgroepen: laurasbakery.nl is WP Recipe Maker met
+"Voor het deeg" en "Voor de vulling", cookieandkate.com is Tasty Recipes. Zie
+[parser.md](parser.md).
 
 Daarnaast staan er twee controlepagina's: `challenge-redirect.html`, een JavaScript-redirect
 zonder Cloudflare-header, en `challenge-turnstile.html`. Ze zijn met een kale curl opgehaald
@@ -33,6 +42,11 @@ juist niet.
 wat sites daadwerkelijk uitleveren.
 
 ### Een nieuwe site toevoegen
+
+Vaak hoef je de pagina niet zelf op te halen. Kwam een import er niet uit (`PARTIAL` of
+`LINK_ONLY`), dan bewaart de repository de rauwe HTML in `cacheDir/pages/<recipeId>.html`, en op dat
+recept staat de knop "Help Kookboek deze site lezen" die hem doorstuurt. Dat is dus meteen de
+fixture, precies zoals de app hem kreeg.
 
 1. Haal de pagina op en zet 'm in `app/src/test/resources/fixtures/<naam>.html`.
 2. Kleed 'm uit: gooi `<style>`, `<svg>`, `<noscript>`, comments en elke `<script>` die géén

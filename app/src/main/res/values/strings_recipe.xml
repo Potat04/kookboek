@@ -1,0 +1,37 @@
+<resources>
+    <!-- The recipe screen, second feature round. Dutch in res/values-nl/strings_recipe.xml. -->
+
+    <!-- Prep and cooking time apart, when the page gave both. Each %s is "15 min" or "1 hr 20 min". -->
+    <string name="recipe_time_prep_cook">%1$s prep, %2$s cooking</string>
+
+    <!-- Under the byline; %s is a date in the phone's medium format. -->
+    <string name="recipe_last_made">Last made %s</string>
+    <string name="recipe_made_it">Made it</string>
+    <string name="recipe_made_hint">A line for next time, if you like</string>
+    <string name="recipe_made_toast">Made today, noted</string>
+
+    <string name="recipe_watch_video">Watch the video</string>
+    <string name="recipe_search_for">Search for %s</string>
+
+    <string name="recipe_refetch_edited_title">Replace your edits?</string>
+    <string name="recipe_refetch_edited_body">You changed the ingredients or steps by hand. Fetching again puts back what the page says now. Your notes stay.</string>
+    <string name="recipe_refetch_anyway">Fetch anyway</string>
+
+    <string name="recipe_no_clock">Could not start a timer in the clock app</string>
+
+    <string name="recipe_copy_ingredients">Copy ingredients</string>
+    <string name="recipe_copied">Ingredients copied</string>
+
+    <string name="recipe_fold_ticked">Hide ticked</string>
+    <string name="recipe_unfold_ticked">Show all</string>
+    <plurals name="recipe_gathered">
+        <item quantity="one">%d gathered</item>
+        <item quantity="other">%d gathered</item>
+    </plurals>
+
+    <string name="recipe_picture_open">Show the picture full screen</string>
+    <string name="recipe_picture_close">Close the picture</string>
+    <string name="recipe_attachment">Photographed recipe</string>
+
+    <string name="recipe_notes_saved">Saved</string>
+</resources>

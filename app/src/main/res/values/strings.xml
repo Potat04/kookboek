@@ -75,8 +75,6 @@
     <string name="recipe_servings_fewer">Fewer servings</string>
     <string name="recipe_view_original">View the original on %s</string>
     <string name="recipe_view_original_generic">the site</string>
-    <string name="recipe_delete_title">Delete this recipe?</string>
-    <string name="recipe_delete_body">\'%s\' leaves your cookbook. You can undo it straight afterwards.</string>
     <string name="recipe_unread_title">The recipe itself didn\'t come through</string>
     <string name="recipe_unread_body">This page publishes no readable recipe — the link has been kept.</string>
     <string name="recipe_unread_open">Open the original</string>
@@ -133,7 +131,7 @@
     <string name="toast_partial">Partly read — worth a look</string>
 
     <string name="error_no_valid_link">No valid link found</string>
-    <string name="error_fetch_failed">Could not fetch the page</string>
+    <string name="error_fetch_failed">Could not fetch the page. Check the link, or try again in a moment.</string>
     <string name="error_blocked">This site blocked the app. Open the page in your browser first, then share it again.</string>
     <string name="challenge_title">This site is checking your browser</string>
     <string name="challenge_body">Finish the check below and the recipe will be read straight after.</string>

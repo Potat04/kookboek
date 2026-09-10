@@ -23,6 +23,8 @@ class RecipeParserTest {
         return RecipeParser.parse(html, url)
     }
 
+    private val ParsedRecipe.lines: List<String> get() = ingredients.map { it.text }
+
     @Test
     fun `cheffatty json-ld`() {
         val r = fixture("cheffatty", "https://www.cheffatty.com/recipes/chili-crisp-scallion-oil-noodles")
@@ -33,10 +35,13 @@ class RecipeParserTest {
         assertEquals(15, r.totalMinutes)
         assertEquals(2, r.servings)
         assertEquals("cheffatty.com", r.siteName)
-        assertTrue(r.ingredients.first().contains("Scallions"))
+        assertTrue(r.lines.first().contains("Scallions"))
         assertTrue(r.steps.first().text.startsWith("Boil dried udon"))
         assertNotNull(r.imageUrl)
         assertEquals(ParseQuality.FULL, r.quality)
+        // Only a cookTime, so the total is that same quarter of an hour.
+        assertNull(r.prepMinutes)
+        assertEquals(15, r.cookMinutes)
     }
 
     @Test
@@ -50,7 +55,15 @@ class RecipeParserTest {
         assertEquals("15 stuks", r.servingsLabel)
         assertEquals(ParseQuality.FULL, r.quality)
         assertEquals("Sandra Waterschoot", r.author)
-        assertTrue(r.ingredients.any { it.contains("loempiavellen") })
+        assertTrue(r.lines.any { it.contains("loempiavellen") })
+        // Prep and cook are published apart here; the total is the site's own, not the sum.
+        assertEquals(40, r.prepMinutes)
+        assertEquals(10, r.cookMinutes)
+        // The one fixture with a video: contentUrl wins over the embed player.
+        assertEquals(
+            "https://www.youtube.com/watch?v=pdenqmIVPpc&ab_channel=Leukerecepten.nl",
+            r.videoUrl,
+        )
     }
 
     @Test
@@ -99,6 +112,45 @@ class RecipeParserTest {
         assertEquals(5, r.steps.size)
         assertTrue(r.imageUrl!!.startsWith("https://"))
         assertTrue(r.tags.isNotEmpty())
+        assertEquals(15, r.prepMinutes)
+        assertEquals(60, r.cookMinutes)
+        assertNull(r.videoUrl)
+    }
+
+    @Test
+    fun `laurasbakery keeps the wp recipe maker ingredient groups`() {
+        val r = fixture("laurasbakery", "https://www.laurasbakery.nl/appeltaart-cheesecake/")
+        assertEquals("Appeltaart cheesecake", r.title)
+        assertEquals(ParseSource.JSON_LD, r.source)
+        assertEquals(15, r.ingredients.size)
+        // The JSON-LD lists the lines flat; the headings only exist in the recipe card.
+        assertEquals(
+            listOf("Voor het deeg", "Voor de vulling"),
+            r.ingredients.mapNotNull { it.section }.distinct(),
+        )
+        assertEquals(6, r.ingredients.count { it.section == "Voor het deeg" })
+        assertEquals(9, r.ingredients.count { it.section == "Voor de vulling" })
+        assertEquals("200 gram ongezouten roomboter", r.ingredients.first().text)
+        assertEquals("Voor de vulling", r.ingredients.last().section)
+        assertEquals("12 personen (22-24 cm vorm)", r.servingsLabel)
+    }
+
+    @Test
+    fun `cookieandkate keeps the tasty recipes ingredient groups`() {
+        val r = fixture(
+            "cookieandkate",
+            "https://cookieandkate.com/vegetarian-enchilada-casserole-recipe/",
+        )
+        assertEquals("Roasted Veggie Enchilada Casserole", r.title)
+        assertEquals(14, r.ingredients.size)
+        assertEquals("Roasted veggies", r.ingredients.first().section)
+        assertEquals(2, r.ingredients.mapNotNull { it.section }.distinct().size)
+        assertEquals(45, r.prepMinutes)
+        assertEquals(60, r.cookMinutes)
+        assertEquals(105, r.totalMinutes)
+        // The page's own contentUrl has typographic quotes baked into it, so it would
+        // never open. A link that cannot be followed is worse than no link.
+        assertNull(r.videoUrl)
     }
 
     @Test
@@ -127,7 +179,7 @@ class RecipeParserTest {
         assertEquals("Zelfgemaakte pesto", r.title)
         assertEquals("Kooksels", r.siteName)
         assertEquals("https://example.com/pesto.jpg", r.imageUrl)
-        assertEquals(listOf("50 g basilicum", "2 tenen knoflook", "100 ml olijfolie"), r.ingredients)
+        assertEquals(listOf("50 g basilicum", "2 tenen knoflook", "100 ml olijfolie"), r.lines)
         assertEquals(2, r.steps.size)
         assertEquals(ParseSource.HTML_HEURISTIC, r.source)
     }
@@ -163,8 +215,8 @@ class RecipeParserTest {
         // The JSON-LD carries a Recipe with no ingredients and no steps, the recipe
         // card is empty, and the list is typed into a <p> with <br> between the lines.
         assertEquals(8, r.ingredients.size)
-        assertEquals("8 portobello’s", r.ingredients.first())
-        assertEquals("90 gr amandelen (geroosterde)", r.ingredients.last())
+        assertEquals("8 portobello’s", r.lines.first())
+        assertEquals("90 gr amandelen (geroosterde)", r.lines.last())
         assertEquals(4, r.steps.size)
         assertTrue(r.steps.first().text.startsWith("Verwarm de oven"))
         assertEquals(ParseQuality.FULL, r.quality)
@@ -182,7 +234,7 @@ class RecipeParserTest {
             </body></html>
         """.trimIndent()
         val r = RecipeParser.parse(html, "https://blog.nl/portobello")
-        assertEquals(listOf("2 portobello's", "200 gr spinazie", "90 gr feta"), r.ingredients)
+        assertEquals(listOf("2 portobello's", "200 gr spinazie", "90 gr feta"), r.lines)
     }
 
     @Test
@@ -240,8 +292,45 @@ class RecipeParserTest {
         """.trimIndent()
         val r = RecipeParser.parse(html, "https://x.nl/test")
         assertEquals("Wel dit", r.title)
-        assertEquals(listOf("2 uien"), r.ingredients)
+        assertEquals(listOf("2 uien"), r.lines)
         assertEquals(1, r.steps.size)
+    }
+
+    @Test
+    fun `json-ld that does publish its groups keeps them`() {
+        // Not every plugin throws the headings away on the way into the JSON-LD.
+        val html = """
+            <html><body>
+            <script type="application/ld+json">
+            {"@type":"Recipe","name":"Test",
+             "ingredientGroups":[
+               {"name":"Voor de saus","ingredients":["2 el sojasaus","1 tl suiker"]},
+               {"name":"Voor de rest","ingredients":["300 g noedels"]}],
+             "recipeInstructions":[{"@type":"HowToStep","text":"Meng alles."}]}
+            </script>
+            </body></html>
+        """.trimIndent()
+        val r = RecipeParser.parse(html, "https://x.nl/test")
+        assertEquals(listOf("2 el sojasaus", "1 tl suiker", "300 g noedels"), r.lines)
+        assertEquals(
+            listOf("Voor de saus", "Voor de saus", "Voor de rest"),
+            r.ingredients.map { it.section },
+        )
+    }
+
+    @Test
+    fun `one heading over the whole list says nothing and is dropped`() {
+        val html = """
+            <html><body>
+            <script type="application/ld+json">
+            {"@type":"Recipe","name":"Test",
+             "ingredientGroups":[{"name":"Ingrediënten","ingredients":["1 ui","2 tomaten"]}],
+             "recipeInstructions":[{"@type":"HowToStep","text":"Snijden."}]}
+            </script>
+            </body></html>
+        """.trimIndent()
+        val r = RecipeParser.parse(html, "https://x.nl/test")
+        assertEquals(listOf(null, null), r.ingredients.map { it.section })
     }
 
     @Test

@@ -3,13 +3,18 @@ package nl.potat04.kookboek.data
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Matrix
+import android.media.ExifInterface
+import android.net.Uri
 import android.util.Log
 import android.util.LruCache
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.ByteArrayInputStream
 import java.io.File
+import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -47,25 +52,66 @@ class ImageStore(context: Context) {
             val bytes = conn.use { it.inputStream.buffered().readBytes() }
             require(bytes.size in 1..MAX_BYTES) { "image is ${bytes.size} bytes" }
 
-            val bitmap = decodeScaled(bytes) ?: error("not a decodable image")
-            val target = File(dir, "$id.jpg")
-            target.outputStream().use { out ->
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out)
-            }
-            bitmap.recycle()
-            target.name
+            val bitmap = decodeScaled { ByteArrayInputStream(bytes) } ?: error("not a decodable image")
+            write(bitmap, "$id.jpg")
         }.onFailure { Log.w(TAG, "image download failed for $url", it) }.getOrNull()
     }
 
+    /**
+     * Copies a picture the reader picked out of the gallery, by the same road a
+     * downloaded one takes: scaled down and re-encoded as JPEG, ours from then on.
+     *
+     * [suffix] separates the photographed recipe card ("-card") from the recipe's own
+     * picture, which keeps the plain recipe id so a replacement lands on the old file.
+     */
+    suspend fun saveFromUri(uri: Uri, id: String, suffix: String = ""): String? =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val open = { checkNotNull(appContext.contentResolver.openInputStream(uri)) }
+                val bitmap = decodeScaled(open) ?: error("not a decodable image")
+                // A phone photo is nearly always turned by its Exif tag rather than by
+                // its pixels, and BitmapFactory ignores that: a card shot in portrait
+                // would end up on its side.
+                write(bitmap.turned(open().use(::exifRotation)), "$id$suffix.jpg")
+            }.onFailure { Log.w(TAG, "could not read the picked image $uri", it) }.getOrNull()
+        }
+
+    /** Writes the bitmap and drops the old decode, because the file name stays the same. */
+    private fun write(bitmap: Bitmap, name: String): String {
+        val target = File(dir, name)
+        target.outputStream().use { out -> bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out) }
+        bitmap.recycle()
+        cache.remove(name)
+        return target.name
+    }
+
     /** Decodes at roughly [MAX_EDGE]px so a 4000px hero shot does not eat 60 MB of heap. */
-    private fun decodeScaled(bytes: ByteArray): Bitmap? {
+    private fun decodeScaled(open: () -> InputStream): Bitmap? {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+        open().use { BitmapFactory.decodeStream(it, null, bounds) }
         val longest = maxOf(bounds.outWidth, bounds.outHeight)
         var sample = 1
         while (longest / sample > MAX_EDGE * 2) sample *= 2
         val opts = BitmapFactory.Options().apply { inSampleSize = sample }
-        return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts)
+        return open().use { BitmapFactory.decodeStream(it, null, opts) }
+    }
+
+    private fun exifRotation(stream: InputStream): Int =
+        runCatching {
+            when (ExifInterface(stream).getAttributeInt(ExifInterface.TAG_ORIENTATION, 0)) {
+                ExifInterface.ORIENTATION_ROTATE_90 -> 90
+                ExifInterface.ORIENTATION_ROTATE_180 -> 180
+                ExifInterface.ORIENTATION_ROTATE_270 -> 270
+                else -> 0
+            }
+        }.getOrDefault(0)
+
+    private fun Bitmap.turned(degrees: Int): Bitmap {
+        if (degrees == 0) return this
+        val matrix = Matrix().apply { postRotate(degrees.toFloat()) }
+        val turned = Bitmap.createBitmap(this, 0, 0, width, height, matrix, true)
+        if (turned !== this) recycle()
+        return turned
     }
 
     suspend fun load(name: String): ImageBitmap? {
@@ -77,6 +123,44 @@ class ImageStore(context: Context) {
                 BitmapFactory.decodeFile(f.absolutePath)?.asImageBitmap()?.also { cache.put(name, it) }
             }.getOrNull()
         }
+    }
+
+    /**
+     * Copies a picture out of a backup, under the name it had there. Leaves [input]
+     * open: it is one entry of a zip the caller is still walking through.
+     *
+     * A file that is already here is left alone. The name is the recipe's id, so the
+     * same name is the same picture, and overwriting would only cost a rewrite.
+     *
+     * @return true when a new file was written.
+     */
+    suspend fun importFile(name: String, input: InputStream): Boolean = withContext(Dispatchers.IO) {
+        val target = File(dir, File(name).name)
+        if (target.exists()) return@withContext false
+        runCatching {
+            target.outputStream().use { input.copyTo(it) }
+            true
+        }.onFailure {
+            Log.w(TAG, "could not import $name", it)
+            // A half-written file would decode to nothing and stay there forever.
+            target.delete()
+        }.getOrDefault(false)
+    }
+
+    /**
+     * Takes a picture that arrived in a `.kookboek` file into the store under the name
+     * the archive gave it.
+     *
+     * The name is the sender's recipe id, so it only ever collides with the same recipe
+     * — which is exactly the case where overwriting is what was asked for.
+     */
+    suspend fun adopt(source: File, name: String): String? = withContext(Dispatchers.IO) {
+        runCatching {
+            val target = File(dir, name)
+            source.copyTo(target, overwrite = true)
+            cache.remove(name)
+            target.name
+        }.onFailure { Log.w(TAG, "could not take over $name", it) }.getOrNull()
     }
 
     /**

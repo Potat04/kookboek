@@ -5,6 +5,7 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import nl.potat04.kookboek.data.Ingredient
 import nl.potat04.kookboek.data.ParseQuality
 import nl.potat04.kookboek.data.Step
 import org.jsoup.Jsoup
@@ -23,12 +24,16 @@ data class ParsedRecipe(
     val imageUrl: String? = null,
     val author: String? = null,
     val siteName: String? = null,
-    val ingredients: List<String> = emptyList(),
+    /** Lines with the group heading they sat under, e.g. "Voor het deeg". */
+    val ingredients: List<Ingredient> = emptyList(),
     val steps: List<Step> = emptyList(),
+    val prepMinutes: Int? = null,
+    val cookMinutes: Int? = null,
     val totalMinutes: Int? = null,
     val servings: Int? = null,
     val servingsLabel: String? = null,
     val tags: List<String> = emptyList(),
+    val videoUrl: String? = null,
     val source: ParseSource = ParseSource.LINK_ONLY,
 ) {
     val quality: ParseQuality
@@ -60,14 +65,14 @@ object RecipeParser {
     fun parse(doc: Document, url: String): ParsedRecipe {
         val site = siteName(doc, url)
         val fromLd = jsonLd(doc)?.let { fromSchema(it, site) }
-        if (fromLd != null && fromLd.quality == ParseQuality.FULL) return fromLd
+        if (fromLd != null && fromLd.quality == ParseQuality.FULL) return fromLd.withGroupsFrom(doc)
 
         val fromMicro = microdata(doc, site)
         val best = listOfNotNull(fromLd, fromMicro).maxByOrNull { it.score() }
-        if (best != null && best.quality == ParseQuality.FULL) return best
+        if (best != null && best.quality == ParseQuality.FULL) return best.withGroupsFrom(doc)
 
         val fromHtml = heuristics(doc, url, site)
-        return listOfNotNull(best, fromHtml).maxByOrNull { it.score() } ?: fromHtml
+        return (listOfNotNull(best, fromHtml).maxByOrNull { it.score() } ?: fromHtml).withGroupsFrom(doc)
     }
 
     private fun ParsedRecipe.score(): Int =
@@ -114,9 +119,20 @@ object RecipeParser {
         val steps = mutableListOf<Step>()
         flattenInstructions(r["recipeInstructions"], null, steps)
 
-        val time = duration(r.str("totalTime"))
-            ?: listOfNotNull(duration(r.str("prepTime")), duration(r.str("cookTime")))
-                .takeIf { it.isNotEmpty() }?.sum()
+        val lines = mutableListOf<Ingredient>()
+        // A plugin that keeps its groups puts them in a list of its own; the plain
+        // property is the same lines with the headings thrown away.
+        flattenIngredients(
+            r["ingredientGroups"] ?: r["recipeIngredientGroups"]
+                ?: r["recipeIngredient"] ?: r["ingredients"],
+            null,
+            lines,
+        )
+
+        val prep = duration(r.str("prepTime"))
+        val cook = duration(r.str("cookTime"))
+        val total = duration(r.str("totalTime"))
+            ?: listOfNotNull(prep, cook).takeIf { it.isNotEmpty() }?.sum()
 
         return ParsedRecipe(
             title = clean(title),
@@ -124,13 +140,15 @@ object RecipeParser {
             imageUrl = imageFrom(r["image"] ?: r["thumbnailUrl"]),
             author = personName(r["author"]),
             siteName = site,
-            ingredients = stringsFrom(r["recipeIngredient"] ?: r["ingredients"]).map { clean(it) }
-                .filter { it.isNotBlank() },
-            steps = dedupeSections(steps),
-            totalMinutes = time,
+            ingredients = dedupeSections(lines, Ingredient::section) { it.copy(section = null) },
+            steps = dedupeSections(steps, Step::section) { it.copy(section = null) },
+            prepMinutes = prep,
+            cookMinutes = cook,
+            totalMinutes = total,
             servings = servingsCount(yieldEl),
             servingsLabel = servingsText(yieldEl),
             tags = tagsFrom(r),
+            videoUrl = videoFrom(r["video"]),
             source = ParseSource.JSON_LD,
         )
     }
@@ -180,6 +198,55 @@ object RecipeParser {
             imageFrom(urls)
         }
         else -> null
+    }
+
+    /**
+     * The video the page published with the recipe, when the link is usable.
+     *
+     * `contentUrl` is the file, `embedUrl` the player; either one opens. Sites do get
+     * this wrong — cookieandkate.com publishes a contentUrl with typographic quotes
+     * baked into it — and a link that cannot open is worse than no link at all.
+     */
+    private fun videoFrom(e: JsonElement?): String? = when (e) {
+        is JsonPrimitive -> primitiveOf(e)?.let(::usableLink)
+        is JsonArray -> e.firstNotNullOfOrNull { videoFrom(it) }
+        is JsonObject -> (primitiveOf(e["contentUrl"]) ?: primitiveOf(e["embedUrl"]) ?: primitiveOf(e["url"]))
+            ?.let(::usableLink)
+        else -> null
+    }
+
+    private fun usableLink(raw: String): String? = clean(raw)
+        .takeIf { url -> url.startsWith("http") && url.none { it.isWhitespace() || it in QUOTES } }
+
+    /**
+     * Ingredients, keeping the heading of the group they sat under.
+     *
+     * Mirrors [flattenInstructions], because the shapes are the same mess: a list of
+     * strings, a list of objects, or groups with their lines nested inside them.
+     */
+    private fun flattenIngredients(
+        e: JsonElement?,
+        section: String?,
+        out: MutableList<Ingredient>,
+        depth: Int = 0,
+    ) {
+        if (e == null || depth > 6) return
+        when (e) {
+            is JsonPrimitive -> primitiveOf(e)?.let { out += Ingredient(clean(it), section) }
+            is JsonArray -> e.forEach { flattenIngredients(it, section, out, depth + 1) }
+            is JsonObject -> {
+                val children = e["ingredients"] ?: e["recipeIngredient"] ?: e["itemListElement"]
+                if (children != null) {
+                    val name = primitiveOf(e["name"] ?: e["title"])
+                        ?.let { clean(it) }?.takeIf { it.length in 1..60 }
+                    flattenIngredients(children, name ?: section, out, depth + 1)
+                } else {
+                    primitiveOf(e["name"] ?: e["text"])?.let { out += Ingredient(clean(it), section) }
+                }
+            }
+            else -> Unit
+        }
+        if (depth == 0) out.removeAll { it.text.isBlank() }
     }
 
     private fun flattenInstructions(
@@ -236,11 +303,11 @@ object RecipeParser {
         .replace(Regex("^\\s*\\d{1,2}\\s*[.)]\\s+"), "")
         .trim()
 
-    /** If every step carries the same section name it carries no information — drop it. */
-    private fun dedupeSections(steps: List<Step>): List<Step> {
-        val sections = steps.mapNotNull { it.section }.distinct()
-        val allSame = sections.size <= 1 && steps.all { it.section != null }
-        return if (allSame) steps.map { it.copy(section = null) } else steps
+    /** If every line carries the same section name it carries no information — drop it. */
+    private fun <T> dedupeSections(items: List<T>, section: (T) -> String?, without: (T) -> T): List<T> {
+        val names = items.mapNotNull(section).distinct()
+        val allSame = names.size <= 1 && items.all { section(it) != null }
+        return if (allSame) items.map(without) else items
     }
 
     // ------------------------------------------------------------- microdata
@@ -264,10 +331,16 @@ object RecipeParser {
             else splitStepText(el.wholeText().ifBlank { el.text() }).forEach { steps += it }
         }
 
-        val timeEl = prop("totalTime") ?: prop("cookTime")
-        val timeRaw = timeEl?.attr("datetime")?.takeIf { it.isNotBlank() }
-            ?: timeEl?.attr("content")?.takeIf { it.isNotBlank() }
-            ?: timeEl?.text()
+        fun minutes(name: String): Int? {
+            val el = prop(name) ?: return null
+            val raw = el.attr("datetime").takeIf { it.isNotBlank() }
+                ?: el.attr("content").takeIf { it.isNotBlank() }
+                ?: el.text()
+            return duration(raw) ?: minutesFromText(raw)
+        }
+
+        val prep = minutes("prepTime")
+        val cook = minutes("cookTime")
         val yieldTxt = propText("recipeYield")
 
         return ParsedRecipe(
@@ -276,9 +349,12 @@ object RecipeParser {
             imageUrl = prop("image")?.let { absUrl(it) },
             author = propText("author"),
             siteName = site,
-            ingredients = ingredients,
+            ingredients = ingredients.map { Ingredient(it) },
             steps = steps.filter { it.isNotBlank() }.map { Step(it) },
-            totalMinutes = duration(timeRaw) ?: minutesFromText(timeRaw),
+            prepMinutes = prep,
+            cookMinutes = cook,
+            totalMinutes = minutes("totalTime")
+                ?: listOfNotNull(prep, cook).takeIf { it.isNotEmpty() }?.sum(),
             servings = yieldTxt?.let { firstInt(it) },
             servingsLabel = descriptiveYield(yieldTxt),
             source = ParseSource.MICRODATA,
@@ -308,9 +384,12 @@ object RecipeParser {
             ?: doc.title().let(::clean).let(::stripSiteSuffix)
             ?: urlTitle(url)
 
-        val ingredients = pluginList(doc, PLUGIN_INGREDIENTS)
-            .ifEmpty { looseList(doc, LOOSE_INGREDIENTS) }
-            .ifEmpty { listAfterHeading(doc, INGREDIENT_WORDS) }
+        val ingredients = groupedIngredients(doc).ifEmpty {
+            pluginList(doc, PLUGIN_INGREDIENTS)
+                .ifEmpty { looseList(doc, LOOSE_INGREDIENTS) }
+                .ifEmpty { listAfterHeading(doc, INGREDIENT_WORDS) }
+                .map { Ingredient(it) }
+        }
         val steps = pluginList(doc, PLUGIN_STEPS)
             .ifEmpty { looseList(doc, LOOSE_STEPS) }
             .ifEmpty { listAfterHeading(doc, STEP_WORDS) }
@@ -328,6 +407,56 @@ object RecipeParser {
             else ParseSource.HTML_HEURISTIC,
         )
     }
+
+    /**
+     * The ingredient list as the recipe plugin laid it out, headings included.
+     *
+     * WP Recipe Maker wraps every group in its own div with an `h4` on top; Tasty
+     * Recipes writes one body with an `h4` before each `ul`. Neither puts the headings
+     * in its JSON-LD, so this is the only place "Voor het deeg" exists on the page.
+     */
+    private fun groupedIngredients(doc: Document): List<Ingredient> {
+        val out = mutableListOf<Ingredient>()
+        for (group in doc.select(".wprm-recipe-ingredient-group")) {
+            val name = group.selectFirst(".wprm-recipe-group-name, h3, h4, h5")?.let { heading(it) }
+            lineTexts(group.select(".wprm-recipe-ingredient")).forEach { out += Ingredient(it, name) }
+        }
+        if (out.isEmpty()) {
+            for (body in doc.select(".tasty-recipes-ingredients-body, .tasty-recipes-ingredients")) {
+                var name: String? = null
+                for (el in body.select("h3, h4, h5, ul, ol")) {
+                    if (el.normalName().startsWith("h")) {
+                        name = heading(el)
+                        continue
+                    }
+                    // A nested list is part of its parent item, not a group of its own.
+                    if (el.parent()?.normalName() == "li") continue
+                    lineTexts(el.select("> li")).forEach { out += Ingredient(it, name) }
+                }
+                if (out.isNotEmpty()) break
+            }
+        }
+        // Without a heading this is only the flat list the other selectors already read.
+        return if (out.size >= 2 && out.any { it.section != null }) out else emptyList()
+    }
+
+    /**
+     * Lifts group headings off the page onto a list that came in flat.
+     *
+     * The structured data wins on everything else, but it drops the groups, so when the
+     * plugin markup lists exactly the same number of lines in the same order the
+     * headings can be laid over it. Different counts mean the two are not describing
+     * the same list, and then nothing is added.
+     */
+    private fun ParsedRecipe.withGroupsFrom(doc: Document): ParsedRecipe {
+        if (ingredients.isEmpty() || ingredients.any { it.section != null }) return this
+        val grouped = groupedIngredients(doc)
+        if (grouped.size != ingredients.size) return this
+        return copy(ingredients = ingredients.mapIndexed { i, line -> line.copy(section = grouped[i].section) })
+    }
+
+    private fun heading(el: Element): String? =
+        clean(el.text()).takeIf { it.isNotBlank() && it.length <= 60 }
 
     private val PLUGIN_INGREDIENTS = listOf(
         ".wprm-recipe-ingredient",
@@ -391,12 +520,19 @@ object RecipeParser {
     }
 
     private fun itemTexts(items: List<Element>): List<String> {
-        val texts = items.filter { it.closest(FURNITURE) == null }
-            .map { clean(it.text()) }
-            .filter { it.isNotBlank() && it.length < 400 }
-            .distinct()
+        val texts = lineTexts(items).distinct()
         return if (texts.size > MAX_ITEMS) emptyList() else texts
     }
+
+    /**
+     * The same lines without the de-duplication, for a list read group by group.
+     * A recipe may well ask for vanilla sugar twice, once per group, and dropping the
+     * second one would put every heading after it on the wrong line.
+     */
+    private fun lineTexts(items: List<Element>): List<String> =
+        items.filter { it.closest(FURNITURE) == null }
+            .map { clean(it.text()) }
+            .filter { it.isNotBlank() && it.length < 400 }
 
     /** Finds a heading whose text mentions one of [words] and returns the list that follows it. */
     private fun listAfterHeading(doc: Document, words: List<String>): List<String> {
@@ -519,6 +655,9 @@ object RecipeParser {
 
     private fun stripHtml(s: String): String =
         if (s.contains('<')) Jsoup.parseBodyFragment(s).text() else s
+
+    /** Typographic quotes in a link mean the site pasted its editor's output into the markup. */
+    private val QUOTES = setOf('"', '\'', '‘', '’', '“', '”', '″')
 
     private fun clean(s: String): String =
         Parser.unescapeEntities(s, false)
