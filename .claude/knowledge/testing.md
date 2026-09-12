@@ -64,10 +64,10 @@ zelf speelt dit niet: Android gebruikt zijn eigen truststore.
 ## De deel-flow echt uitproberen
 
 Unit tests raken de parser, niet de flow eromheen. Voor dat laatste is er een emulator-AVD
-`kookboek` (Android 36, Pixel-formaat).
+`Sandbox` (Android 16, Pixel-formaat); `emulator -list-avds` zegt welke er op deze machine staan.
 
 ```bash
-"$LOCALAPPDATA/Android/Sdk/emulator/emulator.exe" -avd kookboek -no-snapshot-load
+"$LOCALAPPDATA/Android/Sdk/emulator/emulator.exe" -avd Sandbox -no-snapshot-load
 ```
 
 Wachten tot 'ie op is:
