@@ -38,8 +38,13 @@ dat is een OkHttp-interceptor zonder document voor zich. Wij hebben het document
 | `Offline` | `OFFLINE` | de telefoon zit niet op een netwerk; verbind en deel opnieuw |
 | `Unreachable` | `FETCH_FAILED` | klopt de link? probeer het zo nog eens |
 
-`Offline` komt uit de exception (`UnknownHostException`, `ConnectException`) én uit
-`ConnectivityManager`, want een captive portal beantwoordt DNS prima en komt nergens.
+`Offline` komt alleen uit `ConnectivityManager`. Een dode host en een link met een typefout erin
+gooien precies wat een uitgeschakelde radio gooit, dus de exception geloven stuurde een lezer met
+vijf streepjes naar de netwerkinstellingen. Een captive portal beantwoordt DNS bovendien prima en
+komt nergens, en dat ziet alleen `ConnectivityManager`.
+
+Een toestel zonder werkende WebView geeft `Unreachable` en niet `Blocked`: niemand hield ons tegen,
+de pagina kwam alleen nooit binnen.
 
 Daarnaast is er `NO_RECIPE_ON_PAGE`, en die komt niet van de fetcher maar van de parser: de pagina
 laadde en er stond geen recept op. Bij importeren blijft de link gewoon bewaard, met die zin
@@ -56,7 +61,9 @@ en heeft `cancelImport()`.
 Het Jsoup-verzoek loopt daarom in `runInterruptible`: een socket die in `read()` staat merkt een
 afgebroken coroutine niet uit zichzelf. De WebView-route was al afbreekbaar (`delay` en
 `suspendCancellableCoroutine`), en de `finally` die hem opruimt draait ook bij een cancel: eerst
-`about:blank` zodat de scripts van de controle stoppen, dan uit de view tree, dan `destroy()`.
+`stopLoading()` zodat de scripts van de controle stoppen, dan uit de view tree, dan `destroy()`.
+Een `loadUrl("about:blank")` hielp daar niet bij: die navigatie staat in de wachtrij en de
+`destroy()` eronder laat hem nooit lopen.
 
 Er wordt niets bewaard en niets gezegd. Wie afbreekt weet wat hij deed, en de pagina staat nog
 gewoon open achter de sheet.

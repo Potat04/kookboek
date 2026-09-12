@@ -89,7 +89,10 @@ object RecipeJson {
             siteName = siteName,
             author = author,
             description = description,
-            imageFile = imageFile,
+            // A file from somewhere else names its own pictures, and a name with a path
+            // in it would point the store at whatever the path leads to — the database
+            // among other things. It is dropped here so no caller has to remember.
+            imageFile = bareName(imageFile),
             ingredients = ingredients.map { Ingredient(it.text, it.section) },
             steps = steps.map { Step(it.text, it.section) },
             prepMinutes = prepMinutes,
@@ -107,7 +110,7 @@ object RecipeJson {
             lastCookedAt = lastCookedAt,
             editedAt = editedAt,
             videoUrl = videoUrl,
-            attachmentFile = attachmentFile,
+            attachmentFile = bareName(attachmentFile),
         )
 
         companion object {
@@ -139,6 +142,15 @@ object RecipeJson {
                 quality = recipe.quality.name,
             )
         }
+    }
+
+    /**
+     * A file name as it may appear in a document or an archive: one name, no path.
+     * Anything else is dropped rather than cleaned up — a file we wrote never has a
+     * path in it, so one that does was not written by us.
+     */
+    fun bareName(raw: String?): String? = raw?.takeIf {
+        it.isNotBlank() && !it.contains('/') && !it.contains('\\') && it != "." && it != ".."
     }
 
     private val json = Json {

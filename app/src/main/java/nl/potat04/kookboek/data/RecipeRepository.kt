@@ -142,9 +142,12 @@ class RecipeRepository(
         keepPage(recipe, fetched.html)
 
         // The picture arrives a moment later; the recipe is already usable without it.
+        // Straight to the row rather than through the mirrored list, which has not
+        // necessarily caught up with the insert one line above — a picture written to
+        // nothing is a JPEG the next prune throws away.
         parsed.imageUrl?.let { imageUrl ->
             images.download(imageUrl, recipe.id)?.let { fileName ->
-                store.update(recipe.id) { it.copy(imageFile = fileName) }
+                store.setImageFile(recipe.id, fileName)
             }
         }
         // The link is kept either way — losing the page is worse than saving a bookmark —
@@ -193,7 +196,7 @@ class RecipeRepository(
         if (recipe.imageFile == null) {
             parsed.imageUrl?.let { imageUrl ->
                 images.download(imageUrl, recipe.id)?.let { name ->
-                    store.update(recipe.id) { it.copy(imageFile = name) }
+                    store.setImageFile(recipe.id, name)
                 }
             }
         }
@@ -234,11 +237,21 @@ class RecipeRepository(
      *
      * Labels arrive as names because ids are local to one phone, so they are matched
      * against the ones already here and only made when there is nothing to match.
+     *
+     * An id sitting in the bin counts as already here: writing the row puts it back in
+     * the library, which is exactly what the reader tapped Replace for. The sheet looks
+     * in the bin too, so the button says Replace and not Add.
      */
     suspend fun addIncoming(incoming: IncomingRecipes): Int {
+        // The mirrored list lags a write by one collection, so asking it after every
+        // insert would make a second "Zondag" for every recipe in the file that wears
+        // one. What has been made in this loop is remembered here instead.
+        val known = this.labels.value.associateByTo(mutableMapOf()) { it.name.lowercase() }
         var added = 0
         for (recipe in incoming.recipes) {
-            val labels = incoming.labelNames[recipe.id].orEmpty().mapNotNull { name -> label(name) }
+            val labels = incoming.labelNames[recipe.id].orEmpty()
+                .mapNotNull { name -> name.trim().takeIf { it.isNotBlank() } }
+                .map { name -> known.getOrPut(name.lowercase()) { createLabel(name) } }
             val pictures = listOfNotNull(recipe.imageFile, recipe.attachmentFile)
             for (name in pictures) {
                 incoming.images[name]?.let { images.adopt(it, name) }
@@ -257,26 +270,28 @@ class RecipeRepository(
         return added
     }
 
-    private suspend fun label(name: String): Label? {
-        val trimmed = name.trim().takeIf { it.isNotBlank() } ?: return null
-        return labels.value.firstOrNull { it.name.equals(trimmed, ignoreCase = true) }
-            ?: createLabel(trimmed)
-    }
-
     /**
      * Keeps the page behind a recipe the parser could not fully read.
      *
      * New site support starts with a saved page, so the one import that just failed is
      * the most useful thing there is. It is overwritten on every refetch and lives in
      * the cache, so it costs nothing to keep and nothing to lose.
+     *
+     * A refetch that finally came back whole takes its old page with it. Leaving it
+     * there would keep the recipe screen offering to send on a page that no longer
+     * describes anything wrong.
      */
     private suspend fun keepPage(recipe: Recipe, html: String) {
         val dir = pagesDir ?: return
-        if (recipe.quality == ParseQuality.FULL) return
         withContext(Dispatchers.IO) {
             runCatching {
-                dir.mkdirs()
-                File(dir, "${recipe.id}.html").writeText(html)
+                val page = File(dir, "${recipe.id}.html")
+                if (recipe.quality == ParseQuality.FULL) {
+                    page.delete()
+                } else {
+                    dir.mkdirs()
+                    page.writeText(html)
+                }
             }.onFailure { Log.w(TAG, "could not keep the page for ${recipe.id}", it) }
         }
     }

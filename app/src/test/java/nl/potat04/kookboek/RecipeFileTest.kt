@@ -8,6 +8,7 @@ import nl.potat04.kookboek.data.RecipeJson
 import nl.potat04.kookboek.data.Step
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.ByteArrayInputStream
@@ -88,6 +89,20 @@ class RecipeFileTest {
         val (result, images) = read(bytes)
         assertTrue(images.isEmpty())
         assertEquals("r1", result.getOrThrow().document.recipes.single().id)
+    }
+
+    @Test
+    fun `a picture name with a path in it never becomes an entry`() {
+        // A row that holds a path — hand-edited json read back in, say — must not turn
+        // into an entry that writes outside the images directory on the other phone.
+        val crooked = recipe.copy(imageFile = "../databases/kookboek.db", attachmentFile = null)
+        val bytes = ByteArrayOutputStream().also { out ->
+            RecipeFile.write(out, listOf(crooked)) { picture }
+        }.toByteArray()
+        val (result, images) = read(bytes)
+        assertTrue("$images", images.isEmpty())
+        // And the name is gone by the time the document turns back into a recipe.
+        assertNull(result.getOrThrow().document.recipes.single().toRecipe().imageFile)
     }
 
     @Test

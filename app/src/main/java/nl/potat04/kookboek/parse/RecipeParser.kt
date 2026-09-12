@@ -121,13 +121,14 @@ object RecipeParser {
 
         val lines = mutableListOf<Ingredient>()
         // A plugin that keeps its groups puts them in a list of its own; the plain
-        // property is the same lines with the headings thrown away.
-        flattenIngredients(
-            r["ingredientGroups"] ?: r["recipeIngredientGroups"]
-                ?: r["recipeIngredient"] ?: r["ingredients"],
-            null,
-            lines,
-        )
+        // property is the same lines with the headings thrown away. The group key is
+        // only better when it holds something: WP Recipe Maker writes it on every
+        // recipe, empty ones included, and an absent key is not the same as an empty
+        // one — falling through on the key alone would leave a full page with no lines.
+        flattenIngredients(r["ingredientGroups"] ?: r["recipeIngredientGroups"], null, lines)
+        if (lines.isEmpty()) {
+            flattenIngredients(r["recipeIngredient"] ?: r["ingredients"], null, lines)
+        }
 
         val prep = duration(r.str("prepTime"))
         val cook = duration(r.str("cookTime"))

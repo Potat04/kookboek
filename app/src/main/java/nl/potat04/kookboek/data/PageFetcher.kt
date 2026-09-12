@@ -21,8 +21,6 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONTokener
 import org.jsoup.Jsoup
-import java.net.ConnectException
-import java.net.UnknownHostException
 import kotlin.coroutines.resume
 
 /**
@@ -110,19 +108,20 @@ class PageFetcher(context: Context) {
             throw e
         } catch (e: Exception) {
             Log.w(TAG, "fetch failed for $url", e)
-            if (isOffline(e)) FetchResult.Offline else FetchResult.Unreachable
+            if (isOffline()) FetchResult.Offline else FetchResult.Unreachable
         }
     }
 
     /**
      * Whether the phone had no way onto the network, rather than the site being at fault.
      *
-     * The exception says it first: nothing resolves and nothing connects when the radio
-     * is off. [ConnectivityManager] is asked as well, because a captive portal answers
-     * DNS perfectly well and still goes nowhere.
+     * [ConnectivityManager] decides, and only it. A dead host and a link with a typo in
+     * it throw exactly what a switched-off radio throws — nothing resolves either way —
+     * so believing the exception meant sending a reader with five bars onto the settings
+     * screen to look for a network. It also catches the case the exception cannot: a
+     * captive portal answers DNS perfectly well and still goes nowhere.
      */
-    private fun isOffline(e: Throwable): Boolean {
-        if (e is UnknownHostException || e is ConnectException) return true
+    private fun isOffline(): Boolean {
         val manager = appContext.getSystemService(ConnectivityManager::class.java) ?: return false
         val capabilities = manager.getNetworkCapabilities(manager.activeNetwork)
         return capabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) != true
@@ -218,15 +217,16 @@ class PageFetcher(context: Context) {
                 throw e
             } catch (e: Exception) {
                 // A device with the WebView package disabled or updating lands here.
+                // Nothing refused us and nothing was fetched, so the honest answer is
+                // that the page never arrived, not that a wall said no.
                 Log.w(TAG, "no browser available for $url", e)
-                FetchResult.Blocked
+                FetchResult.Unreachable
             } finally {
                 web?.let { view ->
                     ChallengeStage.clear(view)
+                    // Stops the check's scripts where a load of about:blank would not:
+                    // that navigation is queued, and destroy() below never lets it run.
                     view.stopLoading()
-                    // A cancelled check is still running scripts; blanking the document
-                    // stops them before the view goes.
-                    view.loadUrl("about:blank")
                     // Destroying a WebView that is still in a view tree crashes; the
                     // screen drops it a frame after the stage empties, so undo the
                     // attachment here rather than trusting the timing.

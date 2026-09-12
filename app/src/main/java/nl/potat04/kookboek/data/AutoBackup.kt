@@ -8,6 +8,8 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.util.concurrent.TimeUnit
 
 /** How a run of the daily backup ended. */
@@ -37,6 +39,14 @@ object AutoBackup {
     private const val INTERVAL_HOURS = 24L
     private const val DAY_MS = 24 * 60 * 60 * 1000L
 
+    /**
+     * One run at a time in this process. The worker and the catch-up at launch can come
+     * up together, and [BackupFolder.write] deletes today's file before writing it — two
+     * runs across each other leave a truncated file, or the "(1)" copy the retention
+     * never prunes.
+     */
+    private val running = Mutex()
+
     /** Enqueues the daily run, or cancels it when there is nothing to back up to. */
     fun schedule(context: Context, settings: Settings) {
         val work = WorkManager.getInstance(context)
@@ -61,7 +71,14 @@ object AutoBackup {
      * on a day nobody opened the app, and [RecipeRepository.recipes] is empty until the
      * first read lands — backing that up would write an empty cookbook over a good one.
      */
-    suspend fun run(context: Context, repo: RecipeRepository, store: SettingsStore): BackupOutcome {
+    suspend fun run(context: Context, repo: RecipeRepository, store: SettingsStore): BackupOutcome =
+        running.withLock { write(context, repo, store) }
+
+    private suspend fun write(
+        context: Context,
+        repo: RecipeRepository,
+        store: SettingsStore,
+    ): BackupOutcome {
         val stored = store.settings.value.backupFolder ?: return BackupOutcome.NoFolder
         val tree = runCatching { Uri.parse(stored) }.getOrNull() ?: return BackupOutcome.NoFolder
 
@@ -97,6 +114,11 @@ object AutoBackup {
         val settings = store.settings.value
         if (!settings.autoBackup || settings.backupFolder == null) return
         if (System.currentTimeMillis() - settings.lastBackupAt < DAY_MS) return
-        run(context, repo, store)
+        running.withLock {
+            // The worker may have been the one holding the lock, in which case today is
+            // already backed up and there is nothing left to catch up with.
+            if (System.currentTimeMillis() - store.settings.value.lastBackupAt < DAY_MS) return
+            write(context, repo, store)
+        }
     }
 }

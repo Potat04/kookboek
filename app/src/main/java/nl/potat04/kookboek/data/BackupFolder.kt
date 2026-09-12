@@ -62,21 +62,28 @@ object BackupFolder {
         name: String,
         body: suspend (OutputStream) -> Unit,
     ): Boolean = withContext(Dispatchers.IO) {
+        val resolver = context.contentResolver
+        var created: Uri? = null
         runCatching {
-            val resolver = context.contentResolver
             children(context, tree)
                 .filter { (childName, _) -> childName == name }
                 .forEach { (_, uri) -> DocumentsContract.deleteDocument(resolver, uri) }
 
             val target = DocumentsContract.createDocument(resolver, documentUri(tree), MIME_ZIP, name)
                 ?: error("the folder would not take a new file")
+            created = target
             val stream = resolver.openOutputStream(target, "w")
                 ?: error("no output stream for $name")
             // Closed here as well as by whoever writes into it: an unclosed document
             // uri leaves a zero-byte file behind that looks like a backup and is not.
             stream.use { body(it) }
             true
-        }.onFailure { Log.w(TAG, "could not write $name", it) }.getOrDefault(false)
+        }.onFailure { failure ->
+            Log.w(TAG, "could not write $name", failure)
+            // Whatever got as far as disk is half a zip under a name that passes for a
+            // backup, and the retention would count it as one of the seven.
+            created?.let { runCatching { DocumentsContract.deleteDocument(resolver, it) } }
+        }.getOrDefault(false)
     }
 
     /** Drops our own daily files beyond the newest [keep]. Anything else in there is not ours. */
