@@ -83,6 +83,16 @@ class KookboekViewModel(
     /** The import running right now, so the reader can call it off. */
     private var importJob: Job? = null
 
+    /**
+     * A recipe being written by hand, before it has ever reached disk.
+     *
+     * Held here and not on the navigation route: the edit screen it feeds outlives a
+     * rotation, and a `remember` in the activity does not, so the blank recipe went
+     * missing underneath the screen still showing it.
+     */
+    private val _draft = MutableStateFlow<Recipe?>(null)
+    val draft: StateFlow<Recipe?> = _draft.asStateFlow()
+
     private val toasts = Channel<Toast>(Channel.BUFFERED)
     val messages = toasts.receiveAsFlow()
 
@@ -158,6 +168,10 @@ class KookboekViewModel(
     }
 
     fun save(recipe: Recipe) = viewModelScope.launch { repo.save(recipe) }
+
+    fun startDraft() { _draft.value = Recipe(title = "") }
+
+    fun clearDraft() { _draft.value = null }
 
     fun toggleSelected(id: String) {
         _selection.update { if (id in it) it - id else it + id }

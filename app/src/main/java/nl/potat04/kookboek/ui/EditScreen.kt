@@ -35,6 +35,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -70,22 +71,28 @@ fun EditScreen(
     onSave: (Recipe) -> Unit,
     contentPadding: PaddingValues,
 ) {
-    var title by remember { mutableStateOf(original.title) }
-    var minutes by remember { mutableStateOf(original.totalMinutes?.toString().orEmpty()) }
-    var servings by remember { mutableStateOf(original.servings?.toString().orEmpty()) }
-    var ingredients by remember {
+    // Saveable throughout: turning the phone rebuilds the activity, and everything
+    // typed here would otherwise be gone — a picked photo included, which is already
+    // on disk by then and would be left behind as an orphan.
+    var title by rememberSaveable { mutableStateOf(original.title) }
+    var minutes by rememberSaveable { mutableStateOf(original.totalMinutes?.toString().orEmpty()) }
+    var servings by rememberSaveable { mutableStateOf(original.servings?.toString().orEmpty()) }
+    var ingredients by rememberSaveable(stateSaver = TextFieldValue.Saver) {
         mutableStateOf(TextFieldValue(ingredientsToText(original.ingredients)))
     }
-    var steps by remember { mutableStateOf(TextFieldValue(stepsToText(original.steps))) }
-    var notes by remember { mutableStateOf(original.notes) }
-    var imageFile by remember { mutableStateOf(original.imageFile) }
-    var attachmentFile by remember { mutableStateOf(original.attachmentFile) }
+    var steps by rememberSaveable(stateSaver = TextFieldValue.Saver) {
+        mutableStateOf(TextFieldValue(stepsToText(original.steps)))
+    }
+    var notes by rememberSaveable { mutableStateOf(original.notes) }
+    var imageFile by rememberSaveable { mutableStateOf(original.imageFile) }
+    var attachmentFile by rememberSaveable { mutableStateOf(original.attachmentFile) }
     // A replacement picture keeps the old file name, so the screen has to be told to
     // read it again rather than show the copy it decoded a moment ago.
     var pictureStamp by remember { mutableIntStateOf(0) }
     var pictureFailed by remember { mutableStateOf(false) }
-    // The recipe as it would be saved, held back until the reader agrees to lose the ticks.
-    var confirming by remember { mutableStateOf<Recipe?>(null) }
+    // Whether the reader still has to agree to lose the ticks. A flag and not the
+    // recipe: nothing can be typed behind the dialog, so it is built again on the yes.
+    var confirming by rememberSaveable { mutableStateOf(false) }
 
     val store = LocalImageStore.current
     val scope = rememberCoroutineScope()
@@ -178,7 +185,7 @@ fun EditScreen(
                         original.checkedSteps.isNotEmpty()
                     val ticksGoing = hadTicks &&
                         recipe.checkedIngredients.isEmpty() && recipe.checkedSteps.isEmpty()
-                    if (ticksGoing) confirming = recipe else onSave(recipe)
+                    if (ticksGoing) confirming = true else onSave(recipe)
                 },
                 enabled = title.isNotBlank(),
             ) { Text(stringResource(R.string.action_save)) }
@@ -282,18 +289,18 @@ fun EditScreen(
         )
     }
 
-    confirming?.let { recipe ->
+    if (confirming) {
         AlertDialog(
-            onDismissRequest = { confirming = null },
+            onDismissRequest = { confirming = false },
             title = { Text(stringResource(R.string.edit_ticks_title)) },
             text = { Text(stringResource(R.string.edit_ticks_body)) },
             confirmButton = {
-                Button(onClick = { confirming = null; onSave(recipe) }) {
+                Button(onClick = { confirming = false; onSave(edited()) }) {
                     Text(stringResource(R.string.action_save))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { confirming = null }) {
+                TextButton(onClick = { confirming = false }) {
                     Text(stringResource(R.string.action_cancel))
                 }
             },

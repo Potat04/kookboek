@@ -276,7 +276,9 @@ en de route `cook/{id}`.
 Eén stap per pagina in `headlineMedium` (serif, en dus mee-schalend met de tekstgrootte), de
 groepskop van die stap klein erboven, en verder alleen een teller "3 / 9" en een kruisje. Tikken
 op de rechterhelft is verder, links is terug, vegen doet hetzelfde; de eerste keer staat er
-onderaan een regel die dat zegt, en die verdwijnt zodra je het één keer gedaan hebt. De helften
+onderaan een regel die dat zegt, en die verdwijnt zodra je het één keer gedaan hebt. Eén keer
+ooit, niet één keer per recept: `Settings.cookHintSeen` onthoudt het, net als `holdHintSeen` in
+de bibliotheek. De helften
 liggen ónder de tekst en luisteren als ouder mee, zodat een aangetikte tijdsduur (`DurationText`)
 en het vinkje hun tik houden en de rest van het scherm doorpakt.
 
@@ -371,7 +373,10 @@ geneste `if`s: wie er iets aan toevoegt, voegt één regel toe.
 - **Een lege lijst is pas leeg als `loaded` waar is.** Anders flitst "je hebt nog geen recepten"
   voorbij bij het opstarten.
 - **Het scherm blijft aan** op het receptscherm en in de kookstand. Je handen zitten onder het
-  deeg.
+  deeg. Beide schermen vragen het aan via `ui/KeepScreenOn.kt`, dat de aanvragen telt. Tijdens een
+  navigatie-overgang staan beide schermen tegelijk in de compositie en verdwijnt het vertrekkende
+  scherm als laatste; zou dat de vlag zomaar wissen, dan viel het scherm uit in de kookstand waar
+  je net binnenkwam.
 - **Verwijderen is altijd terug te draaien** via de snackbar, inclusief de foto. Die ene knop is de
   enige weg terug, dus hij mag nooit de zwakst leesbare tekst in de app zijn. Vandaar de
   expliciete `inverse*`-waarden.

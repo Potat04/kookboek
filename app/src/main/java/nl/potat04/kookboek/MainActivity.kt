@@ -35,7 +35,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.launch
-import nl.potat04.kookboek.data.Recipe
 import nl.potat04.kookboek.data.SettingsStore
 import nl.potat04.kookboek.ui.AddRecipeSheet
 import nl.potat04.kookboek.ui.CookScreen
@@ -165,8 +164,9 @@ private fun KookboekNavHost(
     val loaded by vm.loaded.collectAsStateWithLifecycle()
     val settings by store.settings.collectAsStateWithLifecycle()
 
-    // Recipes created by "write it yourself" only hit disk once you save them.
-    var draft by remember { mutableStateOf<Recipe?>(null) }
+    // Recipes created by "write it yourself" only hit disk once you save them. The
+    // ViewModel keeps them, so turning the phone mid-sentence does not lose the page.
+    val draft by vm.draft.collectAsStateWithLifecycle()
     // Up here rather than inside the library route, because the "Paste a link" shortcut
     // opens it from outside the navigation.
     var addOpen by remember { mutableStateOf(false) }
@@ -247,7 +247,12 @@ private fun KookboekNavHost(
             if (addOpen) {
                 AddRecipeSheet(
                     busy = busy,
-                    onDismiss = { addOpen = false },
+                    // Swiping the sheet away while a page is being fetched means the
+                    // same as the Cancel button under it.
+                    onDismiss = {
+                        vm.cancelImport()
+                        addOpen = false
+                    },
                     // The sheet stays up while the page is being fetched, because that
                     // is where the Cancel button lives.
                     onImport = { url ->
@@ -262,7 +267,7 @@ private fun KookboekNavHost(
                     },
                     onWriteOwn = {
                         addOpen = false
-                        draft = Recipe(title = "")
+                        vm.startDraft()
                         nav.navigate("edit/new")
                     },
                 )
@@ -321,6 +326,8 @@ private fun KookboekNavHost(
                     onToggleStep = { vm.toggleStep(recipe, it) },
                     onToggleIngredient = { vm.toggleIngredient(recipe, it) },
                     onNotify = vm::notify,
+                    hintSeen = settings.cookHintSeen,
+                    onHintSeen = { store.setCookHintSeen(true) },
                     contentPadding = padding,
                 )
             }
@@ -374,7 +381,7 @@ private fun KookboekNavHost(
                     onCancel = { nav.popBackStack() },
                     onSave = { edited ->
                         vm.save(edited)
-                        draft = null
+                        vm.clearDraft()
                         if (isNew) {
                             nav.popBackStack()
                             nav.navigate("recipe/${edited.id}")

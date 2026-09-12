@@ -1,7 +1,5 @@
 package nl.potat04.kookboek.ui
 
-import android.app.Activity
-import android.view.WindowManager
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
@@ -41,13 +39,11 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,7 +51,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
@@ -89,6 +84,8 @@ fun CookScreen(
     onToggleStep: (Int) -> Unit,
     onToggleIngredient: (Int) -> Unit,
     onNotify: (UiText) -> Unit,
+    hintSeen: Boolean,
+    onHintSeen: () -> Unit,
     contentPadding: PaddingValues,
 ) {
     KeepScreenOn()
@@ -105,7 +102,10 @@ fun CookScreen(
             steps.indices.firstOrNull { it !in recipe.checkedSteps } ?: 0
         },
     ) { steps.size }
-    var hint by rememberSaveable(recipe.id) { mutableStateOf(true) }
+    // Once ever, not once per recipe: whoever has tapped through a recipe knows how
+    // the screen works, and the answer outlives this screen in the settings.
+    var hint by remember(hintSeen) { mutableStateOf(!hintSeen) }
+    val hintUsed = { if (hint) { hint = false; onHintSeen() } }
 
     // The stepper on the recipe screen writes cookedServings; this only reads it, so
     // both screens show the same amounts without either one owning the number.
@@ -161,7 +161,7 @@ fun CookScreen(
                         checked = recipe.checkedSteps,
                         state = pager,
                         hint = hint,
-                        onUsed = { hint = false },
+                        onUsed = hintUsed,
                         onToggleStep = onToggleStep,
                         onTimer = onTimer,
                         modifier = Modifier
@@ -204,7 +204,7 @@ fun CookScreen(
                     checked = recipe.checkedSteps,
                     state = pager,
                     hint = hint,
-                    onUsed = { hint = false },
+                    onUsed = hintUsed,
                     onToggleStep = onToggleStep,
                     onTimer = onTimer,
                     modifier = Modifier
@@ -423,16 +423,5 @@ private fun IngredientList(
                 )
             }
         }
-    }
-}
-
-/** Same reason as on the recipe screen: your hands are in the dough. */
-@Composable
-private fun KeepScreenOn() {
-    val view = LocalView.current
-    DisposableEffect(view) {
-        val window = (view.context as? Activity)?.window
-        window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        onDispose { window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
     }
 }
