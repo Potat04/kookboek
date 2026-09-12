@@ -39,6 +39,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.KeyboardType
@@ -263,22 +264,28 @@ fun EditScreen(
         }
         Spacer(Modifier.height(18.dp))
 
+        // Without focus the caret sits at 0 and a heading would land in front of the
+        // first line. A box nobody has tapped gets its heading at the end instead.
+        var ingredientsFocused by remember { mutableStateOf(false) }
         LinesField(
             label = stringResource(R.string.edit_field_ingredients),
             value = ingredients,
             onValue = { ingredients = it },
             minLines = 6,
+            onFocusChanged = { ingredientsFocused = it },
         )
-        HeadingChip { ingredients = ingredients.withHeading() }
+        HeadingChip { ingredients = ingredients.withHeading(atEnd = !ingredientsFocused) }
         Spacer(Modifier.height(14.dp))
 
+        var stepsFocused by remember { mutableStateOf(false) }
         LinesField(
             label = stringResource(R.string.edit_field_steps),
             value = steps,
             onValue = { steps = it },
             minLines = 8,
+            onFocusChanged = { stepsFocused = it },
         )
-        HeadingChip { steps = steps.withHeading() }
+        HeadingChip { steps = steps.withHeading(atEnd = !stepsFocused) }
         Spacer(Modifier.height(14.dp))
 
         Field(
@@ -392,6 +399,7 @@ private fun LinesField(
     value: TextFieldValue,
     onValue: (TextFieldValue) -> Unit,
     minLines: Int,
+    onFocusChanged: (Boolean) -> Unit = {},
 ) {
     OutlinedTextField(
         value = value,
@@ -404,12 +412,12 @@ private fun LinesField(
             focusedBorderColor = MaterialTheme.colorScheme.primary,
             unfocusedBorderColor = MaterialTheme.colorScheme.controlOutline,
         ),
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().onFocusChanged { onFocusChanged(it.isFocused) },
     )
 }
 
-private fun TextFieldValue.withHeading(): TextFieldValue {
-    val (typed, caret) = insertHeading(text, selection.start)
+private fun TextFieldValue.withHeading(atEnd: Boolean = false): TextFieldValue {
+    val (typed, caret) = insertHeading(text, if (atEnd) text.length else selection.start)
     return TextFieldValue(typed, TextRange(caret))
 }
 

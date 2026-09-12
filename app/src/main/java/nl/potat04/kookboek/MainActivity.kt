@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.activity.compose.BackHandler
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
@@ -122,6 +123,10 @@ private fun Kookboek(
                 message = toast.message.resolve(context),
                 actionLabel = toast.actionLabel?.resolve(context),
                 withDismissAction = toast.actionLabel == null,
+                // Compose keeps a snackbar with an action up for ever unless told
+                // otherwise. Ten seconds is enough to reach for Undo, and after that
+                // the message must not sit over a library that has moved on.
+                duration = if (toast.actionLabel != null) SnackbarDuration.Long else SnackbarDuration.Short,
             )
             if (result == SnackbarResult.ActionPerformed) toast.undo?.invoke()
         }
@@ -257,8 +262,12 @@ private fun KookboekNavHost(
                     // is where the Cancel button lives.
                     onImport = { url ->
                         vm.importUrl(url) { id ->
+                            // A sheet dismissed while the page was still coming in said
+                            // "not now": the recipe is kept and the snackbar says so, but
+                            // nobody gets dragged onto a screen they did not ask for.
+                            val wanted = addOpen
                             addOpen = false
-                            id?.let { nav.navigate("recipe/$it") }
+                            if (wanted) id?.let { nav.navigate("recipe/$it") }
                         }
                     },
                     onCancel = {

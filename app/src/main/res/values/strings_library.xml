@@ -17,4 +17,6 @@
     <string name="library_shortcut_add_short">Paste a link</string>
     <string name="library_shortcut_add_long">Paste a recipe link</string>
 
+    <string name="library_no_favourites">No favourites yet</string>
+    <string name="library_no_favourites_body">Tap the heart on a recipe to keep it here.</string>
 </resources>

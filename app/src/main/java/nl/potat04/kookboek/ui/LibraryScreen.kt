@@ -147,7 +147,7 @@ fun LibraryScreen(
 
             when {
                 total == 0 -> item { EmptyLibrary() }
-                recipes.isEmpty() -> item { NoMatches(favouritesOnly) }
+                recipes.isEmpty() -> item { NoMatches(favouritesOnly, searching = query.isNotBlank()) }
                 else -> items(recipes, key = { it.id }) { recipe ->
                     RecipeCard(
                         recipe = recipe,
@@ -516,7 +516,10 @@ private fun EmptyLibrary() {
 }
 
 @Composable
-private fun NoMatches(favouritesOnly: Boolean) {
+private fun NoMatches(favouritesOnly: Boolean, searching: Boolean) {
+    // With the favourites chip on and nothing typed, there is no "other word" to try:
+    // the shelf is simply empty, and the way to fill it is the heart on a recipe.
+    val noFavourites = favouritesOnly && !searching
     Box(
         Modifier
             .fillMaxWidth()
@@ -526,14 +529,20 @@ private fun NoMatches(favouritesOnly: Boolean) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 stringResource(
-                    if (favouritesOnly) R.string.library_no_matches_favourites
-                    else R.string.library_no_matches
+                    when {
+                        noFavourites -> R.string.library_no_favourites
+                        favouritesOnly -> R.string.library_no_matches_favourites
+                        else -> R.string.library_no_matches
+                    }
                 ),
                 style = MaterialTheme.typography.headlineSmall,
             )
             Spacer(Modifier.height(6.dp))
             Text(
-                stringResource(R.string.library_no_matches_body),
+                stringResource(
+                    if (noFavourites) R.string.library_no_favourites_body
+                    else R.string.library_no_matches_body
+                ),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

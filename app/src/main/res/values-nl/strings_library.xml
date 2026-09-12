@@ -14,4 +14,6 @@
     <string name="library_shortcut_add_short">Link plakken</string>
     <string name="library_shortcut_add_long">Plak een link naar een recept</string>
 
+    <string name="library_no_favourites">Nog geen favorieten</string>
+    <string name="library_no_favourites_body">Tik op het hartje bij een recept om het hier te bewaren.</string>
 </resources>
