@@ -94,6 +94,13 @@ class RecipeStore(context: Context, private val scope: CoroutineScope) {
         dao.upsert(transform(current))
     }
 
+    /**
+     * Hangs a picture on a recipe without reading it back first. [update] cannot do this
+     * one: it goes through the mirrored list, and a download finishes while the insert
+     * that started it may still be on its way there.
+     */
+    suspend fun setImageFile(id: String, name: String) = dao.setImageFile(id, name)
+
     fun byId(id: String?): Recipe? = _recipes.value.firstOrNull { it.id == id }
 
     fun deletedById(id: String?): Recipe? = _deleted.value.firstOrNull { it.id == id }
@@ -104,7 +111,9 @@ class RecipeStore(context: Context, private val scope: CoroutineScope) {
     suspend fun createLabel(name: String): Label {
         val label = Label(
             name = name.trim(),
-            position = (_labels.value.maxOfOrNull { it.position } ?: -1) + 1,
+            // The table and not the mirrored list: a file full of recipes can make
+            // several labels before a single collection has run.
+            position = (dao.lastLabelPosition() ?: -1) + 1,
         )
         dao.insertLabel(label.toEntity())
         return label

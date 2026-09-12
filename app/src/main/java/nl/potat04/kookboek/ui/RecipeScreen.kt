@@ -1,12 +1,10 @@
 package nl.potat04.kookboek.ui
 
-import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.view.WindowManager
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -80,6 +78,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -92,7 +91,9 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -113,6 +114,11 @@ import nl.potat04.kookboek.ui.theme.controlOutline
 private const val KEY_METHOD = "method"
 private const val KEY_METHOD_END = "method-end"
 private const val KEY_STEP = "step:"
+
+// How long the notes box waits after the last keystroke before it saves, and how long
+// "Saved" stays up afterwards.
+private const val NOTES_SAVE_DELAY = 600L
+private const val NOTES_SAVED_SHOWN = 1800L
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -159,10 +165,60 @@ fun RecipeScreen(
     val tickStep: (Int) -> Unit = { tick(); onToggleStep(it) }
 
     var foldTicked by rememberSaveable { mutableStateOf(false) }
-    var sheetOpen by remember { mutableStateOf(false) }
-    var madeItOpen by remember { mutableStateOf(false) }
-    var confirmRefetch by remember { mutableStateOf(false) }
-    var fullScreen by remember { mutableStateOf<String?>(null) }
+    var sheetOpen by rememberSaveable { mutableStateOf(false) }
+    var madeItOpen by rememberSaveable { mutableStateOf(false) }
+    var confirmRefetch by rememberSaveable { mutableStateOf(false) }
+    var fullScreen by rememberSaveable { mutableStateOf<String?>(null) }
+
+    // The notes box is drawn inside a lazy item, so its text cannot live there:
+    // scrolling it off the screen would take whatever has not been saved yet with it.
+    var notesDraft by rememberSaveable(recipe.id) { mutableStateOf(recipe.notes) }
+    // What was last handed to the store, so our own save coming back can be told apart
+    // from a change made elsewhere.
+    var notesStored by rememberSaveable(recipe.id) { mutableStateOf(recipe.notes) }
+    var notesSaved by remember(recipe.id) { mutableStateOf(false) }
+
+    // Written from somewhere else — a refetch, or "Made it" pencilling in its date.
+    // Ours is in there by then, because that is what was sent along.
+    LaunchedEffect(recipe.notes) {
+        if (recipe.notes != notesStored) {
+            notesDraft = recipe.notes
+            notesStored = recipe.notes
+        }
+    }
+
+    // Notes save as you type, but only after you pause — no save button to forget.
+    LaunchedEffect(notesDraft, recipe.id) {
+        // First thing: typing and undoing it inside the window would otherwise leave
+        // "Saved" standing over a save that never happened.
+        notesSaved = false
+        if (notesDraft == notesStored) return@LaunchedEffect
+        delay(NOTES_SAVE_DELAY)
+        onNotes(notesDraft)
+        notesStored = notesDraft
+        notesSaved = true
+        delay(NOTES_SAVED_SHOWN)
+        notesSaved = false
+    }
+
+    // Leaving the screen inside that pause would drop the line. The ViewModel outlives
+    // the screen, so the write still lands.
+    val pending by rememberUpdatedState(notesDraft to notesStored)
+    DisposableEffect(recipe.id) {
+        onDispose {
+            val (draft, stored) = pending
+            if (draft != stored) onNotes(draft)
+        }
+    }
+
+    // "Made it" pencils a line into the same notes, read off what the store holds. A
+    // draft still inside the pause would be overwritten by that copy, so it goes first.
+    val flushNotes = {
+        if (notesDraft != notesStored) {
+            onNotes(notesDraft)
+            notesStored = notesDraft
+        }
+    }
 
     // Refetching over hand-edited lines is the one thing here the snackbar cannot undo.
     val refetch = { if (recipe.editedAt != null) confirmRefetch = true else onRefresh() }
@@ -352,7 +408,7 @@ fun RecipeScreen(
     val notesPage: LazyListScope.() -> Unit = {
         item(key = "notes") {
             SectionHeader(stringResource(R.string.recipe_notes))
-            NotesField(recipe.notes, onNotes)
+            NotesField(value = notesDraft, saved = notesSaved, onValueChange = { notesDraft = it })
             recipe.attachmentFile?.let { file ->
                 Spacer(Modifier.height(16.dp))
                 AttachmentPicture(file) { fullScreen = file }
@@ -558,7 +614,7 @@ fun RecipeScreen(
     }
     if (madeItOpen) {
         MadeItDialog(
-            onConfirm = { madeItOpen = false; onMadeIt(it) },
+            onConfirm = { madeItOpen = false; flushNotes(); onMadeIt(it) },
             onDismiss = { madeItOpen = false },
         )
     }
@@ -571,10 +627,15 @@ fun RecipeScreen(
     fullScreen?.let { FullScreenPicture(it) { fullScreen = null } }
 }
 
-/** One entry in the overflow menu. A list, so a new entry is one line to add. */
+/**
+ * One entry in the overflow menu. A list, so a new entry is one line to add.
+ *
+ * A [Painter] and not an `ImageVector`, because not every icon here is a Material one:
+ * the printer is a drawable, and hand-converting it to Kotlin was a copy to keep in step.
+ */
 private data class MenuEntry(
     val label: String,
-    val icon: ImageVector?,
+    val icon: Painter?,
     val enabled: Boolean = true,
     val onClick: () -> Unit,
 )
@@ -626,7 +687,7 @@ private fun DetailBar(
             if (recipe.sourceUrl != null) add(
                 MenuEntry(
                     label = stringResource(if (busy) R.string.recipe_refreshing else R.string.recipe_refresh),
-                    icon = Icons.Default.Refresh,
+                    icon = rememberVectorPainter(Icons.Default.Refresh),
                     enabled = !busy,
                     onClick = onRefresh,
                 ),
@@ -634,23 +695,23 @@ private fun DetailBar(
             if (recipe.ingredients.isNotEmpty()) add(
                 MenuEntry(
                     label = stringResource(R.string.recipe_copy_ingredients),
-                    icon = Icons.AutoMirrored.Filled.List,
+                    icon = rememberVectorPainter(Icons.AutoMirrored.Filled.List),
                     onClick = onCopyIngredients,
                 ),
             )
-            add(MenuEntry(stringResource(R.string.recipe_made_it), Icons.Outlined.Done, onClick = onMadeIt))
+            add(MenuEntry(stringResource(R.string.recipe_made_it), rememberVectorPainter(Icons.Outlined.Done), onClick = onMadeIt))
             // Three ways out of the app: to whoever you talk to, to another Kookboek,
             // and onto paper. See ui/Sharing.kt and ui/PrintRecipe.kt.
-            add(MenuEntry(stringResource(R.string.share_as_text), Icons.Outlined.Share) {
+            add(MenuEntry(stringResource(R.string.share_as_text), rememberVectorPainter(Icons.Outlined.Share)) {
                 context.shareRecipeText(listOf(recipe))
             })
-            add(MenuEntry(stringResource(R.string.share_as_file), Icons.AutoMirrored.Outlined.Send) {
+            add(MenuEntry(stringResource(R.string.share_as_file), rememberVectorPainter(Icons.AutoMirrored.Outlined.Send)) {
                 // Writing the zip is real work, so it waits for a scope rather than
                 // holding up the menu closing.
                 scope.launch { images?.let { context.shareRecipeFile(listOf(recipe), it) } }
             })
-            add(MenuEntry(stringResource(R.string.share_print), PrintIcon) { context.printRecipe(recipe, images) })
-            add(MenuEntry(stringResource(R.string.action_delete), Icons.Outlined.Delete, onClick = onDelete))
+            add(MenuEntry(stringResource(R.string.share_print), painterResource(R.drawable.ic_print)) { context.printRecipe(recipe, images) })
+            add(MenuEntry(stringResource(R.string.action_delete), rememberVectorPainter(Icons.Outlined.Delete), onClick = onDelete))
         }
         Box {
             IconButton(onClick = { menu = true }) {
@@ -910,22 +971,10 @@ private fun StepRow(
 }
 
 @Composable
-private fun NotesField(notes: String, onNotes: (String) -> Unit) {
-    var draft by remember(notes) { mutableStateOf(notes) }
-    var saved by remember { mutableStateOf(false) }
-    // Notes save as you type, but only after you pause — no save button to forget.
-    LaunchedEffect(draft) {
-        if (draft != notes) {
-            delay(600)
-            onNotes(draft)
-            saved = true
-            delay(1800)
-            saved = false
-        }
-    }
+private fun NotesField(value: String, saved: Boolean, onValueChange: (String) -> Unit) {
     OutlinedTextField(
-        value = draft,
-        onValueChange = { draft = it },
+        value = value,
+        onValueChange = onValueChange,
         placeholder = { Text(stringResource(R.string.recipe_notes_hint)) },
         minLines = 3,
         shape = MaterialTheme.shapes.small,
@@ -1016,16 +1065,6 @@ private fun CouldNotRead(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun KeepScreenOn() {
-    val view = LocalView.current
-    DisposableEffect(view) {
-        val window = (view.context as? Activity)?.window
-        window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        onDispose { window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
     }
 }
 

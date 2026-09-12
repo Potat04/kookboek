@@ -39,7 +39,7 @@
     <string name="library_selection_delete">Delete selected</string>
     <string name="library_selection_refresh">Refetch selected</string>
     <string name="library_no_info">No extra info</string>
-    <string name="library_link_only">link only</string>
+    <string name="library_link_only">only the link, tap to fill it in</string>
     <string name="library_empty_title">Still an empty cookbook</string>
     <string name="library_empty_body">Find a recipe in your browser, tap Share and pick Kookboek. The app reads the recipe off the page and keeps it here — even if the site goes offline later.</string>
     <string name="library_empty_hint">Or tap Add to paste a link or write a recipe yourself.</string>
@@ -122,7 +122,7 @@
         <item quantity="one">%d recipe updated</item>
         <item quantity="other">%d recipes updated</item>
     </plurals>
-    <string name="toast_refreshed_partial">%1$d updated, %2$d failed</string>
+    <string name="toast_refreshed_partial">%1$d updated, %2$d failed and still selected</string>
     <string name="toast_refresh_no_source">Nothing to refetch: none of these came from a page</string>
     <string name="toast_deleted">\'%s\' deleted</string>
     <string name="toast_already_saved">Already in your cookbook</string>

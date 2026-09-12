@@ -48,6 +48,8 @@ data class Settings(
     val favouritesOnly: Boolean = false,
     /** The long-press hint in the library is shown once, then never again. */
     val holdHintSeen: Boolean = false,
+    /** Same for the tap hint in cook mode: once you have paged, you know how it works. */
+    val cookHintSeen: Boolean = false,
     /** A SAF tree Uri as a string, granted through the folder picker. Null until chosen. */
     val backupFolder: String? = null,
     val lastBackupAt: Long = 0,

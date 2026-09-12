@@ -112,6 +112,66 @@ class LauncherIconTest {
         assertEquals("the router must be launchable through the aliases", "true", router.attr("android:exported"))
     }
 
+    /**
+     * The app shortcuts hang off the launcher entries, which are the aliases.
+     *
+     * Android reads `android.app.shortcuts` from the component that answers
+     * MAIN/LAUNCHER, and that is the enabled alias, never [LauncherRouter] behind it,
+     * which has no filter of its own. Put the meta-data on the router and a long press
+     * on the icon offers nothing, with nothing to see in a build or a log. Because the
+     * alias in play changes with the palette, all six have to carry it.
+     */
+    @Test
+    fun `every launcher entry declares the app shortcuts`() {
+        aliases.forEach { alias ->
+            val declared = alias.select("meta-data")
+                .filter { it.attr("android:name") == "android.app.shortcuts" }
+                .map { it.attr("android:resource") }
+            assertEquals(
+                "${alias.attr("android:name")} does not point at @xml/shortcuts, so a long " +
+                    "press on that palette's icon would offer nothing",
+                listOf("@xml/shortcuts"),
+                declared,
+            )
+        }
+    }
+
+    /**
+     * The shortcuts themselves: what they start and what they carry. The extras are read
+     * by `Shortcuts.consume`, and a name that drifts apart from that object is a shortcut
+     * that opens the library and does nothing else.
+     */
+    @Test
+    fun `the shortcuts start MainActivity with the extras Shortcuts reads`() {
+        val shortcuts = Jsoup.parse(File(res("xml/shortcuts.xml")), "UTF-8", "", Parser.xmlParser())
+            .select("shortcut")
+        assertEquals(
+            "ids of the declared shortcuts",
+            listOf("add_link", "favourites"),
+            shortcuts.map { it.attr("android:shortcutId") }.sorted(),
+        )
+        shortcuts.forEach { shortcut ->
+            val id = shortcut.attr("android:shortcutId")
+            val intent = shortcut.select("intent").single()
+            assertEquals(
+                "$id must start MainActivity; there is one window and the library is where it lands",
+                "nl.potat04.kookboek.MainActivity",
+                intent.attr("android:targetClass"),
+            )
+            assertEquals("$id targets another app", "nl.potat04.kookboek", intent.attr("android:targetPackage"))
+            assertTrue(
+                "$id has no label under the icon",
+                shortcut.attr("android:shortcutShortLabel").startsWith("@string/"),
+            )
+        }
+        val extras = shortcuts.select("extra").map { it.attr("android:name") }.sorted()
+        assertEquals(
+            "the extras must be the ones Shortcuts.consume looks for",
+            listOf(Shortcuts.EXTRA_ADD_LINK, Shortcuts.EXTRA_FAVOURITES).sorted(),
+            extras,
+        )
+    }
+
     /** MainActivity must not carry a launcher filter of its own, or the app shows twice. */
     @Test
     fun `MainActivity is not itself a launcher entry`() {

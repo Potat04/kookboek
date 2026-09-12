@@ -22,7 +22,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,7 +46,9 @@ fun DeletedScreen(
     onBack: () -> Unit,
     contentPadding: PaddingValues,
 ) {
-    var confirming by remember { mutableStateOf<Recipe?>(null) }
+    // The id and not the recipe: this survives a rotation, and the row it points at
+    // can be restored from another screen while the question is up.
+    var confirming by rememberSaveable { mutableStateOf<String?>(null) }
 
     LazyColumn(
         Modifier.fillMaxWidth(),
@@ -98,13 +100,14 @@ fun DeletedScreen(
             DeletedRow(
                 recipe = recipe,
                 onRestore = { onRestore(recipe.id) },
-                onDeleteForever = { confirming = recipe },
+                onDeleteForever = { confirming = recipe.id },
             )
             Rule(Modifier.padding(vertical = 4.dp))
         }
     }
 
-    confirming?.let { recipe ->
+    confirming?.let { id ->
+        val recipe = recipes.firstOrNull { it.id == id } ?: return@let
         AlertDialog(
             onDismissRequest = { confirming = null },
             title = {

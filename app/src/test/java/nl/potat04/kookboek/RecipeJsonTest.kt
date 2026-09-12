@@ -7,6 +7,7 @@ import nl.potat04.kookboek.data.Recipe
 import nl.potat04.kookboek.data.RecipeJson
 import nl.potat04.kookboek.data.Step
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -100,6 +101,31 @@ class RecipeJsonTest {
         val recipe = RecipeJson.decode(text).getOrThrow().recipes.single().toRecipe()
         assertEquals("Soep", recipe.title)
         assertEquals(listOf(Ingredient("water")), recipe.ingredients)
+    }
+
+    @Test
+    fun `a picture name that climbs out of the images directory is dropped`() {
+        // Nothing stops someone hand-editing a recipes.json and handing it back. A name
+        // like this passes an "does the file exist" check and would have the database
+        // itself packed into the next backup.
+        val text = """
+            {"format":"kookboek","version":1,"exportedAt":1,"recipes":[
+              {"id":"x","title":"Soep","addedAt":5,
+               "imageFile":"../databases/kookboek.db","attachmentFile":"nested/photo.jpg"}
+            ]}
+        """.trimIndent()
+        val back = RecipeJson.decode(text).getOrThrow().recipes.single().toRecipe()
+        assertNull(back.imageFile)
+        assertNull(back.attachmentFile)
+    }
+
+    @Test
+    fun `a plain file name is left alone`() {
+        assertEquals("r1.jpg", RecipeJson.bareName("r1.jpg"))
+        assertNull(RecipeJson.bareName(null))
+        assertNull(RecipeJson.bareName("  "))
+        assertNull(RecipeJson.bareName(".."))
+        assertNull(RecipeJson.bareName("nested\\photo.jpg"))
     }
 
     @Test

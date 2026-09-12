@@ -16,12 +16,13 @@ import org.junit.Test
  */
 class RecipeParserTest {
 
-    private fun fixture(name: String, url: String): ParsedRecipe {
-        val html = checkNotNull(javaClass.getResourceAsStream("/fixtures/$name.html")) {
+    private fun raw(name: String): String =
+        checkNotNull(javaClass.getResourceAsStream("/fixtures/$name.html")) {
             "missing fixture $name"
         }.bufferedReader().use { it.readText() }
-        return RecipeParser.parse(html, url)
-    }
+
+    private fun fixture(name: String, url: String): ParsedRecipe =
+        RecipeParser.parse(raw(name), url)
 
     private val ParsedRecipe.lines: List<String> get() = ingredients.map { it.text }
 
@@ -64,6 +65,41 @@ class RecipeParserTest {
             "https://www.youtube.com/watch?v=pdenqmIVPpc&ab_channel=Leukerecepten.nl",
             r.videoUrl,
         )
+    }
+
+    @Test
+    fun `an empty group list does not stand in for the ingredients`() {
+        // WP Recipe Maker writes ingredientGroups on every recipe, groups or no groups,
+        // and an empty one used to swallow the whole list. No saved page here has that
+        // shape, so this is the real Leuke Recepten page with the key dropped into its
+        // JSON-LD — the shape is what is being tested, not a site.
+        val url = "https://www.leukerecepten.nl/recepten/loempia-maken-in-de-airfryer/"
+        for (value in listOf("[]", "null", """{"ingredients":[]}""")) {
+            val html = raw("leukerecepten")
+                .replaceFirst("\"recipeIngredient\"", "\"ingredientGroups\":$value,\"recipeIngredient\"")
+            val r = RecipeParser.parse(html, url)
+            assertEquals(value, ParseSource.JSON_LD, r.source)
+            assertEquals(value, 15, r.ingredients.size)
+            assertEquals(value, ParseQuality.FULL, r.quality)
+        }
+    }
+
+    @Test
+    fun `a group list with headings in it still wins`() {
+        // The other half of the rule: groups are better than the flat property whenever
+        // they hold anything, because they carry the headings the flat one throws away.
+        val url = "https://www.leukerecepten.nl/recepten/loempia-maken-in-de-airfryer/"
+        // Two groups, because one heading over every line is no heading at all and the
+        // parser drops it again.
+        val groups = """[
+            {"name":"Vulling","ingredients":["1 winterpeen","2 lente-uitjes"]},
+            {"name":"Saus","ingredients":["2 el sojasaus"]}
+        ]"""
+        val html = raw("leukerecepten")
+            .replaceFirst("\"recipeIngredient\"", "\"ingredientGroups\":$groups,\"recipeIngredient\"")
+        val r = RecipeParser.parse(html, url)
+        assertEquals(listOf("1 winterpeen", "2 lente-uitjes", "2 el sojasaus"), r.lines)
+        assertEquals(listOf("Vulling", "Vulling", "Saus"), r.ingredients.map { it.section })
     }
 
     @Test

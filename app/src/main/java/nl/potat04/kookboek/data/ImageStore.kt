@@ -156,9 +156,11 @@ class ImageStore(context: Context) {
      */
     suspend fun adopt(source: File, name: String): String? = withContext(Dispatchers.IO) {
         runCatching {
-            val target = File(dir, name)
+            // The name comes out of someone else's archive, so it is stripped of any
+            // path the same way importFile strips it: this directory or nowhere.
+            val target = File(dir, File(name).name)
             source.copyTo(target, overwrite = true)
-            cache.remove(name)
+            cache.remove(target.name)
             target.name
         }.onFailure { Log.w(TAG, "could not take over $name", it) }.getOrNull()
     }

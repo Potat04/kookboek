@@ -79,7 +79,12 @@ class OpenFileActivity : ComponentActivity() {
             onSuccess = { incoming ->
                 OpenState.Ready(
                     incoming = incoming,
-                    existing = incoming.recipes.mapNotNull { app.repository.byId(it.id) },
+                    // The bin counts as already here: adding the file writes the row
+                    // back into the library, and calling that "Add" would be a lie
+                    // about a recipe the reader threw out.
+                    existing = incoming.recipes.mapNotNull {
+                        app.repository.byId(it.id) ?: app.repository.deletedById(it.id)
+                    },
                 )
             },
             onFailure = { OpenState.Failed(it) },

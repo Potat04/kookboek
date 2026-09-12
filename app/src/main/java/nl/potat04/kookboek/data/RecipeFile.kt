@@ -70,6 +70,9 @@ object RecipeFile {
                 .flatMap { listOfNotNull(it.imageFile, it.attachmentFile) }
                 .distinct()
                 .forEach { name ->
+                    // The reader on the other end refuses a name with a path in it, and
+                    // so does this end: an entry like that is never one of ours.
+                    if (RecipeJson.bareName(name) == null) return@forEach
                     val bytes = imageBytes(name) ?: return@forEach
                     zip.putNextEntry(ZipEntry(IMAGE_PREFIX + name))
                     zip.write(encrypt(bytes))

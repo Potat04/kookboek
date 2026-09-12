@@ -22,9 +22,6 @@ abstract class RecipeDao {
     @Query("SELECT * FROM recipes WHERE deletedAt IS NOT NULL ORDER BY deletedAt DESC")
     abstract fun observeDeleted(): Flow<List<RecipeWithParts>>
 
-    @Query("SELECT COUNT(*) FROM recipes WHERE deletedAt IS NULL")
-    abstract suspend fun count(): Int
-
     /**
      * Writes a recipe and its lines as one unit. The lines are replaced wholesale
      * rather than diffed: a recipe is a handful of rows, and this cannot drift.
@@ -65,10 +62,26 @@ abstract class RecipeDao {
     @Query("UPDATE recipes SET openedAt = :now WHERE id = :id AND openedAt IS NULL")
     abstract suspend fun markOpened(id: String, now: Long)
 
+    /**
+     * The picture, straight onto the row. A download lands a moment after the recipe was
+     * written, and reading the row back out of the mirrored list would mean waiting on a
+     * collection that may not have happened yet.
+     */
+    @Query("UPDATE recipes SET imageFile = :name WHERE id = :id")
+    abstract suspend fun setImageFile(id: String, name: String)
+
     // ------------------------------------------------------------------ labels
 
     @Query("SELECT * FROM labels ORDER BY position ASC")
     abstract fun observeLabels(): Flow<List<LabelEntity>>
+
+    /**
+     * The end of the list as the table has it. Asked here rather than of the mirrored
+     * flow, which is a collection behind a label made a moment ago — several labels made
+     * in one go would otherwise all land on the same position.
+     */
+    @Query("SELECT MAX(position) FROM labels")
+    abstract suspend fun lastLabelPosition(): Int?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     abstract suspend fun insertLabel(label: LabelEntity)

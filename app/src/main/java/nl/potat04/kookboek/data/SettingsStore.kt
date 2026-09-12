@@ -31,6 +31,7 @@ class SettingsStore(context: Context) {
         librarySort = prefs.getString(KEY_LIBRARY_SORT, null),
         favouritesOnly = prefs.getBoolean(KEY_FAVOURITES_ONLY, false),
         holdHintSeen = prefs.getBoolean(KEY_HOLD_HINT_SEEN, false),
+        cookHintSeen = prefs.getBoolean(KEY_COOK_HINT_SEEN, false),
         backupFolder = prefs.getString(KEY_BACKUP_FOLDER, null),
         lastBackupAt = prefs.getLong(KEY_LAST_BACKUP_AT, 0),
         autoBackup = prefs.getBoolean(KEY_AUTO_BACKUP, false),
@@ -50,6 +51,8 @@ class SettingsStore(context: Context) {
 
     fun setHoldHintSeen(seen: Boolean) = write { it.copy(holdHintSeen = seen) }
 
+    fun setCookHintSeen(seen: Boolean) = write { it.copy(cookHintSeen = seen) }
+
     fun setBackupFolder(uri: String?) = write { it.copy(backupFolder = uri) }
 
     fun setLastBackupAt(millis: Long) = write { it.copy(lastBackupAt = millis) }
@@ -67,6 +70,7 @@ class SettingsStore(context: Context) {
             .putString(KEY_LIBRARY_SORT, next.librarySort)
             .putBoolean(KEY_FAVOURITES_ONLY, next.favouritesOnly)
             .putBoolean(KEY_HOLD_HINT_SEEN, next.holdHintSeen)
+            .putBoolean(KEY_COOK_HINT_SEEN, next.cookHintSeen)
             .putString(KEY_BACKUP_FOLDER, next.backupFolder)
             .putLong(KEY_LAST_BACKUP_AT, next.lastBackupAt)
             .putBoolean(KEY_AUTO_BACKUP, next.autoBackup)
@@ -84,6 +88,7 @@ class SettingsStore(context: Context) {
         const val KEY_LIBRARY_SORT = "library_sort"
         const val KEY_FAVOURITES_ONLY = "favourites_only"
         const val KEY_HOLD_HINT_SEEN = "hold_hint_seen"
+        const val KEY_COOK_HINT_SEEN = "cook_hint_seen"
         const val KEY_BACKUP_FOLDER = "backup_folder"
         const val KEY_LAST_BACKUP_AT = "last_backup_at"
         const val KEY_AUTO_BACKUP = "auto_backup"

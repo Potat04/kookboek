@@ -20,6 +20,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -113,20 +114,27 @@ fun BackupSection(
 /** The chosen folder, whether we can still reach it, and when it last got a file. */
 @Composable
 private fun FolderRow(settings: Settings, onPick: () -> Unit) {
-    val name = rememberFolderName(settings.backupFolder)
+    val folder by rememberFolderName(settings.backupFolder)
     Row(
         Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
             Text(
-                name.value ?: stringResource(R.string.backup_folder_none),
+                when (val state = folder) {
+                    is FolderName.Named -> state.name
+                    FolderName.None -> stringResource(R.string.backup_folder_none)
+                    // Nothing truthful to put here yet, and an empty line keeps the row
+                    // the same height as the answer that is on its way.
+                    FolderName.Looking, FolderName.Gone -> ""
+                },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface,
             )
             val note = when {
-                settings.backupFolder != null && name.value == null ->
-                    stringResource(R.string.backup_folder_lost)
+                // Only once the provider has answered: while it is thinking, saying the
+                // folder is unreachable would be a guess.
+                folder == FolderName.Gone -> stringResource(R.string.backup_folder_lost)
                 settings.lastBackupAt > 0 ->
                     stringResource(R.string.backup_last, dayText(settings.lastBackupAt))
                 else -> stringResource(R.string.backup_last_never)
@@ -150,18 +158,40 @@ private fun FolderRow(settings: Settings, onPick: () -> Unit) {
 }
 
 /**
- * The folder's name as the picker showed it, or null when the grant is gone. Read off
- * the provider rather than parsed out of the Uri: a tree id is not a name, and a folder
- * that has been renamed should read as its new name.
+ * What the row knows about the chosen folder. Four states and not a nullable name,
+ * because "no answer yet" and "the folder is gone" look the same from a null and read
+ * as two very different sentences.
+ */
+private sealed interface FolderName {
+    /** The provider has been asked and has not answered yet. */
+    data object Looking : FolderName
+    /** Nothing has ever been chosen. */
+    data object None : FolderName
+    data class Named(val name: String) : FolderName
+    /** Chosen once, but the grant or the folder is gone. */
+    data object Gone : FolderName
+}
+
+/**
+ * The folder's name as the picker showed it. Read off the provider rather than parsed
+ * out of the Uri: a tree id is not a name, and a folder that has been renamed should
+ * read as its new name.
  */
 @Composable
-private fun rememberFolderName(stored: String?): State<String?> {
+private fun rememberFolderName(stored: String?): State<FolderName> {
     val context = LocalContext.current
-    return produceState<String?>(initialValue = null, stored, context) {
-        val uri = stored?.let { runCatching { Uri.parse(it) }.getOrNull() }
+    return produceState<FolderName>(initialValue = FolderName.Looking, stored, context) {
+        // Another folder was picked: ask again rather than leave the old name standing.
+        value = FolderName.Looking
+        if (stored == null) {
+            value = FolderName.None
+            return@produceState
+        }
+        val uri = runCatching { Uri.parse(stored) }.getOrNull()
         // Off the main thread: asking a provider for a name is a query, and the
         // provider may well be a cloud client that has to think about it.
-        value = uri?.let { withContext(Dispatchers.IO) { BackupFolder.displayName(context, it) } }
+        val name = uri?.let { withContext(Dispatchers.IO) { BackupFolder.displayName(context, it) } }
+        value = if (name == null) FolderName.Gone else FolderName.Named(name)
     }
 }
 

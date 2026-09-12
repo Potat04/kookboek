@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The debug build's copy of ../../../main/res/xml/shortcuts.xml. Only the package
+  differs: debug installs as nl.potat04.kookboek.debug (applicationIdSuffix), and a
+  static shortcut aimed at a package that is not installed is two dead entries on every
+  debug phone. Change the shortcuts in main and mirror the change here.
+-->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <shortcut
+        android:shortcutId="favourites"
+        android:enabled="true"
+        android:icon="@mipmap/ic_shortcut_favourites"
+        android:shortcutShortLabel="@string/library_shortcut_favourites_short"
+        android:shortcutLongLabel="@string/library_shortcut_favourites_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="nl.potat04.kookboek.debug"
+            android:targetClass="nl.potat04.kookboek.MainActivity">
+            <extra
+                android:name="shortcut_favourites"
+                android:value="true" />
+        </intent>
+    </shortcut>
+
+    <shortcut
+        android:shortcutId="add_link"
+        android:enabled="true"
+        android:icon="@mipmap/ic_shortcut_add"
+        android:shortcutShortLabel="@string/library_shortcut_add_short"
+        android:shortcutLongLabel="@string/library_shortcut_add_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="nl.potat04.kookboek.debug"
+            android:targetClass="nl.potat04.kookboek.MainActivity">
+            <extra
+                android:name="shortcut_add_link"
+                android:value="true" />
+        </intent>
+    </shortcut>
+
+</shortcuts>

@@ -61,6 +61,9 @@ class Backup(private val repo: RecipeRepository) {
                 .flatMap { listOfNotNull(it.imageFile, it.attachmentFile) }
                 .distinct()
                 .forEach { name ->
+                    // A row that somehow holds a path must not turn into a zip entry
+                    // that writes outside the images directory when it is read back.
+                    if (imageName(name) == null) return@forEach
                     val file = repo.images.file(name)
                     if (!file.isFile) return@forEach
                     zip.putNextEntry(ZipEntry("$IMAGES/$name"))
@@ -139,7 +142,14 @@ class Backup(private val repo: RecipeRepository) {
                 .filter { it.isNotEmpty() }
                 .map { name -> known.getOrPut(name.lowercase()) { repo.createLabel(name) } }
 
-            val incoming = dto.toRecipe(labels)
+            // A picture named in the document but missing from the zip would leave the
+            // card showing a grey block instead of a letter.
+            val incoming = dto.toRecipe(labels).let { recipe ->
+                recipe.copy(
+                    imageFile = recipe.imageFile?.takeIf { repo.images.file(it).exists() },
+                    attachmentFile = recipe.attachmentFile?.takeIf { repo.images.file(it).exists() },
+                )
+            }
             val local = repo.byId(dto.id) ?: repo.deletedById(dto.id)
             when {
                 local == null -> {
@@ -196,8 +206,7 @@ class Backup(private val repo: RecipeRepository) {
          * empty string, is dropped rather than cleaned up: a backup we wrote never has
          * one, so a file that does is not a backup we wrote.
          */
-        fun imageName(raw: String): String? =
-            raw.takeIf { it.isNotBlank() && !it.contains('/') && !it.contains('\\') && it != "." && it != ".." }
+        fun imageName(raw: String): String? = RecipeJson.bareName(raw)
 
         /** When a copy was last touched by hand, falling back to when it was saved. */
         fun stamp(recipe: Recipe): Long = maxOf(recipe.editedAt ?: 0L, recipe.addedAt)
